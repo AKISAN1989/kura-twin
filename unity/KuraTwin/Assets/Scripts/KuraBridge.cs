@@ -46,6 +46,16 @@ public class KuraBridge : MonoBehaviour
     Camera cam;
     Vector3 camTargetPos, camLookAt, camLookAtCurrent;
     Transform tojiHead;
+    Animator tojiAnimator;
+    float nodUntil;
+
+    static Transform FindDeep(Transform t, string name)
+    {
+        if (t == null) return null;
+        if (t.name == name) return t;
+        foreach (Transform c in t) { var f = FindDeep(c, name); if (f != null) return f; }
+        return null;
+    }
     string bubbleText = "";
     float bubbleUntil;
     MaterialPropertyBlock mpb;
@@ -101,7 +111,9 @@ public class KuraBridge : MonoBehaviour
             t.tag.SetActive(false);
             tanks[id] = t;
         }
-        tojiHead = kura.Find("Toji/Head");
+        // 吹き出しの位置：Tripo の杜氏なら頭の骨に付けた目印（HeadAnchor）、仮の人形なら Head
+        tojiHead = FindDeep(kura.Find("Toji"), "HeadAnchor") ?? kura.Find("Toji/Head");
+        tojiAnimator = kura.Find("Toji")?.GetComponentInChildren<Animator>();
         ready = true;
     }
 
@@ -144,6 +156,8 @@ public class KuraBridge : MonoBehaviour
     public void TojiSay(string text)
     {
         bubbleText = text ?? "";
+        // 話すあいだ、小さくうなずく（Update でうなずきの層の重みを上げる）
+        nodUntil = string.IsNullOrEmpty(bubbleText) ? 0f : Time.time + Mathf.Clamp(bubbleText.Length * 0.12f, 3f, 12f);
         bubbleUntil = Time.time + Mathf.Clamp(bubbleText.Length * 0.25f, 6f, 40f);
         if (string.IsNullOrEmpty(bubbleText)) KuraBubble("", 0, 0, 0);
     }
@@ -264,13 +278,17 @@ public class KuraBridge : MonoBehaviour
             }
         }
 
+        // 話すあいだだけ、うなずきの層（首と頭）をふわっと効かせる
+        if (tojiAnimator != null && tojiAnimator.layerCount > 1)
+            tojiAnimator.SetLayerWeight(1, Mathf.MoveTowards(tojiAnimator.GetLayerWeight(1), Time.time < nodUntil ? 1f : 0f, Time.deltaTime * 3f));
+
         // 吹き出しの位置を Web 側へ（日本語の文字は HTML で描く）
         if (!string.IsNullOrEmpty(bubbleText) && cam != null && tojiHead != null)
         {
             if (Time.time > bubbleUntil) { bubbleText = ""; KuraBubble("", 0, 0, 0); }
             else
             {
-                var sp = cam.WorldToScreenPoint(tojiHead.position + Vector3.up * 0.35f);
+                var sp = cam.WorldToScreenPoint(tojiHead.position + Vector3.up * 0.3f);
                 bool visible = sp.z > 0;
                 KuraBubble(bubbleText, sp.x / Screen.width, sp.y / Screen.height, visible ? 1 : 0);
             }

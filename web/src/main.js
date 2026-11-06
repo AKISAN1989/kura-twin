@@ -26,12 +26,15 @@ async function startUnity() {
     status.textContent = "Unity版がまだ書き出されていません（web/public/unity/ に置くとここに表示されます）";
     return;
   }
+  // 書き出しの版（毎回変わる）を URL に付け、新しい3Dを確実に読む
+  const v = await fetch(`${base.replace(/kura$/, "")}version.txt`, { cache: "no-store" }).then(r => (r.ok ? r.text() : "")).catch(() => "");
+  const q = v ? `?v=${encodeURIComponent(v.trim())}` : "";
   try {
     const instance = await window.createUnityInstance($("unity-canvas"), {
       // Brotli で圧縮した3D（.unityweb）。配信側が解凍しない場合は Unity の読み込み部が自分で解凍する
-      dataUrl: `${base}.data.unityweb`,
-      frameworkUrl: `${base}.framework.js.unityweb`,
-      codeUrl: `${base}.wasm.unityweb`,
+      dataUrl: `${base}.data.unityweb${q}`,
+      frameworkUrl: `${base}.framework.js.unityweb${q}`,
+      codeUrl: `${base}.wasm.unityweb${q}`,
       // ?capture=1 のときだけ、3Dの画面を画像として取り出せるようにする（README・動画の素材用）
       webglContextAttributes: { preserveDrawingBuffer: new URLSearchParams(location.search).has("capture") },
       companyName: "KuraTwin",

@@ -176,3 +176,11 @@ unity/**/*.opendb
 unity/**/*.VC.db
 unity/**/.vs/
 unity/**/.idea/
+
+# Tripo で杜氏を作るときの作業ファイル（タスク番号・確認用の書き出し）
+web/scripts/tripo/.state.json
+web/scripts/tripo/out/
+
+# Tripo で作った杜氏のモデル（FBX・画像・材質）は公開しない。作り直しは web/scripts/tripo/toji.mjs → Unity の「シーンを用意」
+unity/KuraTwin/Assets/Toji/
+unity/KuraTwin/Assets/Toji.meta

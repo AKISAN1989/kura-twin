@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -350,6 +351,7 @@ public static class KuraBuild
             GameObjectUtility.SetStaticEditorFlags(g, StaticEditorFlags.ContributeGI | StaticEditorFlags.ReflectionProbeStatic | StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
         };
         var kura = KuraScene.Build(bridge.transform, palette, keep, markStatic);
+        InstallToji(kura);
 
         foreach (Transform lamp in kura.Find("Lamps"))
         {
@@ -394,6 +396,150 @@ public static class KuraBuild
         EditorSceneManager.SaveScene(scene, ScenePath);
         AssetDatabase.SaveAssets();
         Debug.Log("[Kura] シーンを用意しました: " + ScenePath);
+    }
+
+    // ================= 杜氏（Tripo で作ったモデル） =================
+    // Assets/Toji/Toji_idle.fbx（立って待つ）と Toji_nod.fbx（うなずく）があれば、仮の人形と差し替える
+    const string TojiDir = "Assets/Toji";
+
+    static void InstallToji(Transform kura)
+    {
+        string idlePath = TojiDir + "/Toji_idle.fbx", nodPath = TojiDir + "/Toji_nod.fbx";
+        if (!File.Exists(idlePath)) { Debug.Log("[Kura] 杜氏のモデルが無いので仮の人形のまま"); return; }
+
+        // 取り込みの設定：Generic の骨、動きはくり返し（うなずきは1回）
+        foreach (var (path, loop) in new[] { (idlePath, true), (nodPath, true) })
+        {
+            if (!File.Exists(path)) continue;
+            var imp = (ModelImporter)AssetImporter.GetAtPath(path);
+            imp.animationType = ModelImporterAnimationType.Generic;
+            imp.importAnimation = true;
+            imp.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
+            var clips = imp.defaultClipAnimations;
+            foreach (var c in clips) { c.loopTime = loop; c.name = Path.GetFileNameWithoutExtension(path); }
+            imp.clipAnimations = clips;
+            imp.SaveAndReimport();
+            // FBX に埋め込まれた材質を取り出し、URP の Lit に直す（そのままだと Built-in の材質で描かれない）
+            ExtractAndFixMaterials(path);
+        }
+
+        var placeholder = kura.Find("Toji");
+        var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(idlePath));
+        model.name = "TojiModel";
+        model.transform.SetParent(placeholder, false);
+        // 仮の人形の形は消す（Head は目印の予備として残すが描かない）
+        foreach (var r in placeholder.GetComponentsInChildren<Renderer>(true))
+            if (!r.transform.IsChildOf(model.transform)) r.enabled = false;
+
+        // 大きさ：身長 約1.62m にそろえ、足元を足場の上に置く
+        var rends = model.GetComponentsInChildren<Renderer>();
+        var b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
+        float scale = 1.62f / Mathf.Max(0.01f, b.size.y);
+        model.transform.localScale *= scale;
+        // 向き：左右の太ももの骨から体の正面を求め、仮の人形と同じ向き（足場からタンクと手前を見る）にそろえる
+        var lThigh = model.GetComponentsInChildren<Transform>().FirstOrDefault(t => t.name == "L_Thigh");
+        var rThigh = model.GetComponentsInChildren<Transform>().FirstOrDefault(t => t.name == "R_Thigh");
+        if (lThigh != null && rThigh != null)
+        {
+            var right = rThigh.position - lThigh.position; right.y = 0;
+            var facing = Vector3.Cross(right.normalized, Vector3.up);
+            var want = placeholder.forward; want.y = 0;
+            model.transform.rotation = Quaternion.FromToRotation(facing, want.normalized) * model.transform.rotation;
+        }
+        rends = model.GetComponentsInChildren<Renderer>();
+        b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
+        model.transform.position += new Vector3(placeholder.position.x - b.center.x, placeholder.position.y - b.min.y, placeholder.position.z - b.center.z);
+        foreach (var r in rends) { r.shadowCastingMode = ShadowCastingMode.On; r.receiveShadows = true; }
+
+        // 吹き出しの目印を頭の骨に付ける（名前に head を含む骨。無ければ頭のてっぺん付近）
+        Transform headBone = null;
+        foreach (var t in model.GetComponentsInChildren<Transform>())
+            if (t.name.ToLower().Contains("head") && !t.name.ToLower().Contains("end")) { headBone = t; break; }
+        var anchor = new GameObject("HeadAnchor").transform;
+        if (headBone != null) { anchor.SetParent(headBone, false); anchor.position = headBone.position; }
+        else { anchor.SetParent(model.transform, false); anchor.position = new Vector3(b.center.x, b.max.y - 0.1f, b.center.z); }
+
+        // 動き：ふだんは「立って待つ」、話すあいだは首と頭だけ「うなずく」を重ねる
+        var idle = AssetDatabase.LoadAllAssetsAtPath(idlePath).OfType<AnimationClip>().FirstOrDefault(c => !c.name.StartsWith("__preview__"));
+        var nod = File.Exists(nodPath) ? AssetDatabase.LoadAllAssetsAtPath(nodPath).OfType<AnimationClip>().FirstOrDefault(c => !c.name.StartsWith("__preview__")) : null;
+        string ctrlPath = TojiDir + "/Toji.controller";
+        AssetDatabase.DeleteAsset(ctrlPath);
+        var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(ctrlPath);
+        var sm = ctrl.layers[0].stateMachine;
+        var sIdle = sm.AddState("Idle"); sIdle.motion = idle;
+        sm.defaultState = sIdle;
+        if (nod != null)
+        {
+            // うなずき：首と頭だけに効く層。体は「立って待つ」のまま。話すあいだだけ層の重みを上げる（KuraBridge）
+            string maskPath = TojiDir + "/TojiHeadOnly.mask";
+            AssetDatabase.DeleteAsset(maskPath);
+            var mask = new AvatarMask();
+            var all = model.GetComponentsInChildren<Transform>(true).Where(t => t != model.transform).ToArray();
+            mask.transformCount = all.Length;
+            for (int i = 0; i < all.Length; i++)
+            {
+                mask.SetTransformPath(i, AnimationUtility.CalculateTransformPath(all[i], model.transform));
+                bool head = all[i].name.StartsWith("Neck") || all[i].name == "Head" || all[i].GetComponentsInParent<Transform>().Any(p => p.name == "Head");
+                mask.SetTransformActive(i, head);
+            }
+            AssetDatabase.CreateAsset(mask, maskPath);
+            var layer = new UnityEditor.Animations.AnimatorControllerLayer
+            {
+                name = "Nod", defaultWeight = 0f, avatarMask = mask,
+                stateMachine = new UnityEditor.Animations.AnimatorStateMachine { name = "Nod" },
+            };
+            AssetDatabase.AddObjectToAsset(layer.stateMachine, ctrl);
+            var sNod = layer.stateMachine.AddState("Nod"); sNod.motion = nod;
+            layer.stateMachine.defaultState = sNod;
+            ctrl.AddLayer(layer);
+        }
+        var animator = model.GetComponent<Animator>();
+        if (animator == null) animator = model.AddComponent<Animator>(); // Unity の部品は ?? で判定できない
+        animator.runtimeAnimatorController = ctrl;
+        animator.applyRootMotion = false;
+        animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        Debug.Log($"[Kura] 杜氏のモデルを組み込みました（倍率 {scale:0.000}、頭の骨 {(headBone ? headBone.name : "なし")}、動き {idle?.name} / {nod?.name}）");
+    }
+
+    static void ExtractAndFixMaterials(string fbxPath)
+    {
+        string matDir = TojiDir + "/Materials";
+        Directory.CreateDirectory(matDir);
+        var imp = (ModelImporter)AssetImporter.GetAtPath(fbxPath);
+        // 前回の差し替え先をいったん外し、FBX 本来の材質から作り直す（何度実行しても同じ結果になるように）
+        foreach (var kv in imp.GetExternalObjectMap()) imp.RemoveRemap(kv.Key);
+        imp.SaveAndReimport();
+        // 埋め込みテクスチャを取り出す
+        imp.ExtractTextures(TojiDir + "/Textures");
+        AssetDatabase.Refresh();
+        var lit = Shader.Find("Universal Render Pipeline/Lit");
+        foreach (var src in AssetDatabase.LoadAllAssetsAtPath(fbxPath).OfType<Material>())
+        {
+            string path = $"{matDir}/{src.name}.mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (m == null) { m = new Material(lit); AssetDatabase.CreateAsset(m, path); }
+            // 色の画像：FBX の材質に無ければ、取り出した Color_* を使う
+            Texture tex = src.HasProperty("_MainTex") ? src.GetTexture("_MainTex") : null;
+            var colorPath = Directory.GetFiles(TojiDir + "/Textures", "Color_*").FirstOrDefault(f => !f.EndsWith(".meta"));
+            if (tex == null && colorPath != null) tex = AssetDatabase.LoadAssetAtPath<Texture2D>(colorPath);
+            m.shader = lit;
+            m.SetTexture("_BaseMap", tex);
+            m.SetColor("_BaseColor", Color.white);
+            m.SetFloat("_Smoothness", 0.25f);
+            // 取り出した凹凸の画像（NormalGL_*）があれば法線マップとして使う
+            var normalPath = Directory.GetFiles(TojiDir + "/Textures", "NormalGL_*").FirstOrDefault(f => !f.EndsWith(".meta"));
+            if (normalPath != null)
+            {
+                var ti = (TextureImporter)AssetImporter.GetAtPath(normalPath);
+                if (ti.textureType != TextureImporterType.NormalMap) { ti.textureType = TextureImporterType.NormalMap; ti.SaveAndReimport(); }
+                m.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath));
+                m.EnableKeyword("_NORMALMAP");
+            }
+            m.SetFloat("_Metallic", 0f);
+            EditorUtility.SetDirty(m);
+            imp.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), src.name), m);
+        }
+        imp.SaveAndReimport();
     }
 
     // 間接光（壁や床に跳ね返る光）を焼き込む。
@@ -532,6 +678,8 @@ public static class KuraBuild
         Directory.CreateDirectory(dst);
         foreach (var f in Directory.GetFiles(src))
             File.Copy(f, Path.Combine(dst, Path.GetFileName(f)), true);
+        // 書き出すたびに変わる版の印。Web 側はこれを URL に付けて、古い3Dがキャッシュから読まれないようにする
+        File.WriteAllText(Path.Combine(dst, "version.txt"), DateTime.UtcNow.ToString("yyyyMMddHHmmss"));
         Debug.Log("[Kura] 書き出して Web に置きました: " + dst);
     }
 

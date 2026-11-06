@@ -1,9 +1,9 @@
 #!/bin/bash
-# git の pre-commit フック：APIキー（sk-ant-）を含む変更のコミットを止める。
+# git の pre-commit フック：APIキー（Anthropic の sk-ant- と Tripo の tsk_）を含む変更のコミットを止める。
 # 有効化：git config core.hooksPath .githooks
-pattern="sk-""ant-[A-Za-z0-9_-]{20,}"
+pattern="(sk-""ant-|ts""k_)[A-Za-z0-9_-]{20,}"  # Anthropic と Tripo の APIキー
 if git diff --cached -U0 | grep '^+' | grep -qE "$pattern"; then
-  echo "コミットを止めました：APIキーらしき文字列（sk-ant-...）が含まれています。" >&2
+  echo "コミットを止めました：APIキーらしき文字列（sk-ant-... か tsk_...）が含まれています。" >&2
   exit 1
 fi
 exit 0
