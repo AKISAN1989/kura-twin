@@ -4,7 +4,7 @@ const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 export const speechAvailable = !!Recognition;
 
 /** button を押すと、textarea に話した内容を書き足す */
-export function attachMic(button, textarea) {
+export function attachMic(button, textarea, labels = { idle: "🎤 声で入力", active: "■ 止める" }) {
   if (!Recognition) { button.hidden = true; return; }
   button.hidden = false;
   let rec = null;
@@ -20,10 +20,10 @@ export function attachMic(button, textarea) {
       for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) heard += e.results[i][0].transcript;
       textarea.value = before + heard;
     };
-    rec.onend = () => { rec = null; button.textContent = "🎤 声で入力"; button.classList.remove("rec"); };
+    rec.onend = () => { rec = null; button.textContent = labels.idle; button.classList.remove("rec"); textarea.dispatchEvent(new Event("input")); };
     rec.onerror = () => rec?.stop();
     rec.start();
-    button.textContent = "■ 止める";
+    button.textContent = labels.active;
     button.classList.add("rec");
   };
 }

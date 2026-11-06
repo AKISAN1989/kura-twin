@@ -1,7 +1,7 @@
 // データの読み込みと、ブラウザ内の保存（取り込んだ経過簿・判断メモ・作った質問）。ログインは無し。
 // 質問の決まりを変えたら questions の版を上げる。古い版の質問は読み込み時に捨て、新しい決まりで作り直す
-const KEYS = { records: "kura.records.v1", memos: "kura.memos.v1", questions: "kura.questions.v2" };
-const OLD_KEYS = ["kura.questions.v1"];
+const KEYS = { records: "kura.records.v1", memos: "kura.memos.v1", questions: "kura.questions.v4" };
+const OLD_KEYS = ["kura.questions.v1", "kura.questions.v2", "kura.questions.v3"]; // v3：スマホで2〜3行に収まる短い質問
 
 function readLocal(key, fallback) {
   try {

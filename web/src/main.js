@@ -95,7 +95,7 @@ window.kuraOnTojiBubble = (text, x, y, visible) => {
     el.style.bottom = `${Math.max(8, Math.min(y * h - bh * 0.6, h - bh - top))}px`;
   }
 };
-window.kuraOnUnityReady = () => app.resend();
+window.kuraOnUnityReady = () => { app.resend(); app.emit("unity-ready"); };
 
 // ---------- 今と過去の表示（3Dの上） ----------
 // 表示している日付と「今季／昨季」。過去へ移るときは、日付がさかのぼるように数字を動かす
@@ -212,6 +212,8 @@ function initTabs() {
   tabs.forEach(b => {
     b.onclick = () => {
       app.tab = b.dataset.tab;
+      // 杜氏のタブだけ、日付・タンク・グラフを隠して質問に絞る（年配の杜氏がスマホでも迷わないように）
+      document.body.classList.toggle("toji-mode", app.tab === "toji");
       tabs.forEach(t => t.setAttribute("aria-selected", String(t === b)));
       document.querySelectorAll(".tab-body").forEach(s => { s.hidden = s.id !== `tab-${app.tab}`; });
       app.emit("tab");
@@ -246,6 +248,7 @@ async function main() {
     if (kind !== "tab") renderTimeBadge();
   });
   initTabs();
+  document.body.classList.toggle("toji-mode", app.tab === "toji");
   initToji({ showMemo });
   initYoung({ showMemo });
   initSummary({ showMemo });

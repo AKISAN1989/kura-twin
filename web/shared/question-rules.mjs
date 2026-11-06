@@ -11,16 +11,19 @@ const CHOICE_PATTERNS = [
   [/(いた|した|だった)(の|ん)(です|でしょう)か[？?]/, "した操作や様子を想定して聞いている"],
 ];
 
+export const MAX_LEN = 45; // スマホ（文字19px・幅375px）で2〜3行
+
 /** 決まりに合わない点を、日本語の文で返す（空なら合格） */
-export function questionProblems(text) {
+export function questionProblems(text, { maxLen = MAX_LEN } = {}) {
   const q = String(text ?? "").trim();
   const problems = [];
   if (!q) return ["質問が空"];
   const marks = (q.match(/[？?]/g) ?? []).length;
   if (marks !== 1) problems.push(`疑問符が${marks}個ある（1つだけにする）`);
   else if (!/[？?]$/.test(q)) problems.push("疑問符が文末にない");
-  // 事実を述べる前置き（「…なっています。」）は1つまで。問いは文末の1つだけ
-  if ((q.match(/。/g) ?? []).length > 1) problems.push("前置きが長い（事実1文＋問い1文にする）");
+  // スマホで2〜3行に収まる長さ。事実の前置きは短く（「。」は2つまで）、問いは文末の1つだけ
+  if ([...q].length > maxLen) problems.push(`長すぎる（${[...q].length}字。${maxLen}字以内にする）`);
+  if ((q.match(/。/g) ?? []).length > 2) problems.push("前置きが長い（短い事実と問い1つにする）");
   for (const [re, why] of CHOICE_PATTERNS) if (re.test(q)) problems.push(why);
   return problems;
 }

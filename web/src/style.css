@@ -173,6 +173,33 @@ textarea:focus, input:focus, select:focus { outline: 2px solid color-mix(in srgb
 .rules { margin-top: 16px; font-size: 13px; color: var(--muted); }
 .rules ul { padding-left: 18px; margin: 6px 0; }
 
+/* 杜氏：理由を残す（このタブのときだけ、質問に絞って大きく） */
+body.toji-mode .timeline, body.toji-mode #tank-detail, body.toji-mode #tank-summary { display: none !important; }
+.ask-card { margin-top: 4px; padding: 18px 18px 16px; border-radius: 16px; background: #fff; border: 1px solid var(--line);
+  box-shadow: 0 3px 14px rgba(80,60,30,.08); }
+.ask-progress { display: flex; justify-content: space-between; align-items: baseline; font-size: 16px; color: var(--muted); }
+.ask-progress strong { font-family: var(--mincho); font-size: 22px; color: var(--accent); }
+.ask-tank { font-family: var(--mincho); font-size: 30px; margin: 8px 0 4px; display: grid; gap: 2px; }
+.ask-tank small { font-family: "Hiragino Sans", sans-serif; font-size: 17px; font-weight: 600; color: var(--ink); }
+.ask-question { margin: 12px 0 18px; padding: 14px 16px; background: var(--accent-soft); border-radius: 4px 16px 16px 16px;
+  font-size: 19px; line-height: 1.7; }
+.ask-question.waiting { color: var(--muted); }
+.btn-voice { display: block; width: 100%; min-height: 76px; border-radius: 16px; font-size: 24px; font-weight: 700; letter-spacing: .08em;
+  background: var(--accent); color: #fff; border: 0; box-shadow: 0 4px 0 rgba(0,0,0,.18); }
+.btn-voice.rec { background: var(--alert); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(192,80,43,.18), 0 4px 0 rgba(0,0,0,.18); } }
+.ask-note { font-size: 16px; color: var(--muted); margin: 8px 0 0; }
+.ask-text-label { display: block; margin: 16px 0 6px; font-size: 16px; color: var(--muted); }
+.ask-text { font-size: 19px; min-height: 92px; }
+.btn-save { display: block; width: 100%; min-height: 60px; margin-top: 12px; border-radius: 14px; font-size: 20px; font-weight: 700;
+  background: var(--wood); color: #fff; border: 0; }
+.btn-save:disabled { opacity: .35; cursor: not-allowed; }
+.btn-later { display: block; margin: 14px auto 0; border: 0; background: none; font-size: 17px; color: var(--muted); text-decoration: underline; min-height: 44px; }
+.ask-done { margin-top: 6px; padding: 32px 20px; text-align: center; border-radius: 16px; background: #fff; border: 1px solid var(--line); }
+.ask-done-title { font-family: var(--mincho); font-size: 24px; line-height: 1.7; margin: 0; }
+.ask-done-sub { font-size: 17px; color: var(--muted); margin: 12px 0 0; }
+body.toji-mode .roles .what { font-size: 17px; }
+
 /* 若手：杜氏とのチャット */
 .chat-log { display: grid; gap: 12px; }
 .msg { display: grid; gap: 4px; max-width: 92%; }
