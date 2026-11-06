@@ -64,6 +64,17 @@ public class KuraBridge : MonoBehaviour
     const float DeckMinX = -7.5f, DeckMaxX = 7.4f; // 足場の端（はしごと手すりの手前）
     const float StandZ = 0.3f;                     // 足場の中心からタンク側へ寄る量（手すりは ±0.66）
 
+    // ふだんの見回り：足場をゆっくり歩き、変化のあったタンクの前で立ち止まって、少し前かがみで中を覗き込む。
+    // 若手の質問の案内（guiding）と、話しているあいだは止める。カメラは動かさない
+    bool guiding, patrolMoving, patrolPeek;
+    Vector3 patrolTarget;
+    Quaternion patrolFace;
+    float patrolWaitUntil, resumePatrolAt, lean, leanTarget;
+    int patrolStep;
+    Transform spineBone, headBone;
+    const float PatrolSpeed = 0.45f;
+    readonly System.Random patrolRng = new System.Random(7);
+
     // 自由なカメラ：ドラッグで回転、スクロール（ピンチ）で拡大・縮小、右ドラッグ（2本指）で平行移動。
     // 「蔵全体」「杜氏の目線」「杜氏の案内」は自動のカメラ。利用者が触った時点で自由なカメラに切り替わる
     bool freeCam, pressing;
@@ -156,6 +167,11 @@ public class KuraBridge : MonoBehaviour
         tojiHead = FindDeep(kura.Find("Toji"), "HeadAnchor") ?? kura.Find("Toji/Head");
         tojiAnimator = kura.Find("Toji")?.GetComponentInChildren<Animator>();
         toji = kura.Find("Toji");
+        // 覗き込むときに曲げる骨（Tripo の杜氏の上の背骨と頭）
+        var model = toji != null ? toji.Find("TojiModel") : null;
+        spineBone = FindDeep(model, "Spine02");
+        headBone = FindDeep(model, "Head");
+        resumePatrolAt = 4f;
         fanBlades = FindDeep(kura.Find("Props"), "FanBlades");
         sun = GameObject.Find("Daylight")?.GetComponent<Light>();
         if (sun != null) { sunNowRot = sun.transform.rotation; sunNowColor = sun.color; sunNowIntensity = sun.intensity; }
@@ -239,6 +255,9 @@ public class KuraBridge : MonoBehaviour
         arriveLookAt = new Vector3(walkTarget.x + walkDir * 0.15f, KuraScene.DeckHeight - 0.35f, side * 1.25f);
         pendingText = text;
         Speak(""); // 歩いているあいだは吹き出しを出さない
+        guiding = true;
+        patrolMoving = false;
+        leanTarget = 0f;
         walking = true;
         guideCam = true;
         freeCam = false;
@@ -272,13 +291,31 @@ public class KuraBridge : MonoBehaviour
                 Turn(Quaternion.LookRotation(to / dist), dt);
             }
         }
-        else if (guideCam && cam != null)
+        else if (guiding)
         {
-            // 着いたら若手（カメラ）の方へ振り向く
-            var look = cam.transform.position - toji.position; look.y = 0f;
-            if (look.sqrMagnitude > 0.01f) Turn(Quaternion.LookRotation(look.normalized), dt);
+            // 着いたら若手（カメラ）の方へ振り向いて語る。語り終えたら少し間をおいて見回りに戻る
+            if (cam != null)
+            {
+                var look = cam.transform.position - toji.position; look.y = 0f;
+                if (look.sqrMagnitude > 0.01f) Turn(Quaternion.LookRotation(look.normalized), dt);
+            }
+            if (string.IsNullOrEmpty(bubbleText)) { guiding = false; resumePatrolAt = Time.time + 4f; }
         }
-        if (tojiAnimator != null) tojiAnimator.SetBool("Walking", walking);
+        else if (string.IsNullOrEmpty(bubbleText) && Time.time >= resumePatrolAt)
+        {
+            Patrol(dt);
+        }
+        else
+        {
+            // 話しているあいだ（案内以外の吹き出し）は、その場で立ち止まる
+            patrolMoving = false;
+            leanTarget = 0f;
+        }
+        if (tojiAnimator != null)
+        {
+            tojiAnimator.SetBool("Walking", walking || patrolMoving);
+            tojiAnimator.speed = patrolMoving && !walking ? 0.6f : 1f; // 見回りはゆっくりの足取り
+        }
 
         if (guideCam)
         {
@@ -295,6 +332,77 @@ public class KuraBridge : MonoBehaviour
                 camLookAt = arriveLookAt;
             }
         }
+    }
+
+    void Patrol(float dt)
+    {
+        if (patrolMoving)
+        {
+            var to = patrolTarget - toji.position; to.y = 0f;
+            float dist = to.magnitude;
+            if (dist < 0.03f)
+            {
+                patrolMoving = false;
+                patrolWaitUntil = Time.time + (patrolPeek ? 5f : 2.5f);
+                return;
+            }
+            var next = toji.position + to / dist * Mathf.Min(dist, PatrolSpeed * dt);
+            next.x = Mathf.Clamp(next.x, DeckMinX, DeckMaxX);
+            next.z = Mathf.Clamp(next.z, -StandZ, StandZ);
+            next.y = KuraScene.DeckHeight;
+            toji.position = next;
+            Turn(Quaternion.LookRotation(to / dist), dt * 0.6f);
+            return;
+        }
+        if (Time.time < patrolWaitUntil)
+        {
+            // 立ち止まって、タンクの方を向き、少し前かがみで中を覗き込む
+            Turn(patrolFace, dt * 0.5f);
+            leanTarget = patrolPeek && Quaternion.Angle(toji.rotation, patrolFace) < 20f ? 1f : 0f;
+            return;
+        }
+        leanTarget = 0f;
+        if (lean > 0.05f) return; // 体を起こしてから次へ
+        PickPatrolTarget();
+    }
+
+    // 次の見回り先：変化のあったタンク（左から順に）と、足場のあちこちを交互に
+    void PickPatrolTarget()
+    {
+        var alerts = new List<Tank>();
+        foreach (var t in tanks.Values) if (t.highlighted) alerts.Add(t);
+        alerts.Sort((a, b) => a.root.position.x.CompareTo(b.root.position.x));
+        patrolStep++;
+        if (alerts.Count > 0 && patrolStep % 2 == 1)
+        {
+            var t = alerts[(patrolStep / 2) % alerts.Count];
+            var p = t.root.position;
+            float side = p.z < 0 ? -1f : 1f;
+            patrolTarget = new Vector3(Mathf.Clamp(p.x, DeckMinX, DeckMaxX), KuraScene.DeckHeight, side * StandZ);
+            patrolFace = Quaternion.LookRotation(new Vector3(0, 0, side));
+            patrolPeek = true;
+        }
+        else
+        {
+            float x = Mathf.Lerp(DeckMinX + 0.5f, DeckMaxX - 0.5f, (float)patrolRng.NextDouble());
+            float z = ((float)patrolRng.NextDouble() - 0.5f) * StandZ;
+            patrolTarget = new Vector3(x, KuraScene.DeckHeight, z);
+            patrolFace = Quaternion.LookRotation(new Vector3((float)patrolRng.NextDouble() - 0.5f, 0, patrolRng.NextDouble() < 0.5 ? -1f : 1f));
+            patrolPeek = false;
+        }
+        patrolMoving = true;
+    }
+
+    // 前かがみ：アニメーションの後に、背骨と頭を体の右向きの軸で少し前へ傾ける
+    void LateUpdate()
+    {
+        if (toji == null) return;
+        lean = Mathf.MoveTowards(lean, leanTarget, Time.deltaTime * 0.9f);
+        if (lean <= 0.001f) return;
+        float e = Mathf.SmoothStep(0f, 1f, lean);
+        var axis = toji.right;
+        if (spineBone != null) spineBone.rotation = Quaternion.AngleAxis(24f * e, axis) * spineBone.rotation;
+        if (headBone != null) headBone.rotation = Quaternion.AngleAxis(16f * e, axis) * headBone.rotation;
     }
 
     static Vector3 Clamp(Vector3 v, Vector3 min, Vector3 max) =>
