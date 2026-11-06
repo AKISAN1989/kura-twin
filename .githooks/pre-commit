@@ -1,0 +1,9 @@
+#!/bin/bash
+# git の pre-commit フック：APIキー（sk-ant-）を含む変更のコミットを止める。
+# 有効化：git config core.hooksPath .githooks
+pattern="sk-""ant-[A-Za-z0-9_-]{20,}"
+if git diff --cached -U0 | grep '^+' | grep -qE "$pattern"; then
+  echo "コミットを止めました：APIキーらしき文字列（sk-ant-...）が含まれています。" >&2
+  exit 1
+fi
+exit 0

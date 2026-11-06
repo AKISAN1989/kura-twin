@@ -1,0 +1,4 @@
+<!-- WebGL 書き出しでコードが削られないようにする（CreatePrimitive が使う当たり判定など） -->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all"/>
+</linker>

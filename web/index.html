@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>蔵ツイン</title>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<div class="app">
+  <section class="stage">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-status" class="unity-status">3Dを読み込んでいます…</div>
+    <div id="toji-bubble" class="toji-bubble" hidden></div>
+  </section>
+  <aside class="panel">
+    <header>
+      <h1>蔵ツイン</h1>
+      <p id="kura-name" class="sub"></p>
+    </header>
+
+    <section class="block">
+      <h2>日付</h2>
+      <div class="day">
+        <input id="day-slider" type="range" min="0" max="0" value="0">
+        <output id="day-label"></output>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>タンク</h2>
+      <div id="tank-buttons" class="tanks"></div>
+      <div class="row">
+        <button id="cam-overview">蔵全体</button>
+        <button id="cam-toji">杜氏の目線</button>
+        <button id="hl-toggle">光らせる（試し）</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>杜氏のキャラクター（試し）</h2>
+      <div class="row">
+        <input id="toji-text" type="text" value="3号は、18日目に追水を30L入れとる。">
+        <button id="toji-say">話す</button>
+      </div>
+    </section>
+
+    <section class="block muted">
+      経過簿の取り込み・杜氏への質問・若手の質問・タンクの要約は、このあと作ります。
+    </section>
+  </aside>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

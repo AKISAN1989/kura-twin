@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>醪経過表（印刷用）</title>
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  :root { --line: #333; --muted: #777; }
+  body { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; margin: 0; background: #fff; color: #111; }
+  .controls { font-family: system-ui, sans-serif; padding: 12px 16px; background: #f3f0e8; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .controls label { font-size: 14px; }
+  .sheet { padding: 8mm 10mm; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: .3em; text-align: center; }
+  .meta { display: flex; gap: 32px; font-size: 14px; margin: 8px 0 10px; }
+  .meta span { border-bottom: 1px solid var(--line); min-width: 120px; display: inline-block; padding: 0 4px; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+  th, td { border: 1px solid var(--line); height: 11mm; text-align: center; font-size: 13px; }
+  th { width: 26mm; background: #faf8f3; font-weight: normal; letter-spacing: .1em; }
+  tr.tall td, tr.tall th { height: 20mm; }
+  td.key { color: #1a4fb0; font-family: system-ui, sans-serif; font-size: 12px; }
+  .foot { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  @media print { .controls { display: none; } .sheet { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="controls">
+  <label>季 <select id="season"><option value="current">今季</option><option value="past">前季</option></select></label>
+  <label>タンク <select id="tank"></select></label>
+  <label>ページ <select id="page"></select></label>
+  <label><input type="checkbox" id="key"> 見本（書き写す値を表示）</label>
+  <button onclick="print()">印刷</button>
+  <span style="font-size:12px;color:#555">空欄で印刷して手で書き、見本の値を書き写してください。見本の値が読み取りの正解になります。</span>
+</div>
+<div class="sheet">
+  <h1>醪 経 過 表</h1>
+  <div class="meta">
+    <div>蔵名 <span id="kura"></span></div>
+    <div>タンク <span id="tankLabel"></span></div>
+    <div>種類 <span id="kind"></span></div>
+    <div>初添 <span id="soe"></span></div>
+  </div>
+  <table id="grid"></table>
+  <div class="foot">架空の蔵のダミーデータ（蔵ツイン デモ用）</div>
+</div>
+<script>
+const COLS = 12;
+const ROWS = [
+  ["月日", r => r.date.slice(5).replace("-", "/")],
+  ["日順", r => r.moromi_day],
+  ["時刻", r => r.time],
+  ["操作", r => r.operation],
+  ["品温", r => r.temp],
+  ["ボーメ", r => r.baume],
+  ["日本酒度", r => r.nihonshudo],
+  ["アルコール分", r => r.alcohol],
+  ["酸度", r => r.acidity],
+  ["状ぼう", r => r.joubou],
+  ["備考", r => r.note, "tall"],
+];
+const $ = id => document.getElementById(id);
+let kura, seasons = {};
+
+async function load() {
+  const get = f => fetch("data/" + f).then(r => r.json());
+  [kura, seasons.current, seasons.past] = await Promise.all([get("kura.json"), get("season-current.json"), get("season-past.json")]);
+  $("tank").innerHTML = kura.tanks.map(t => `<option value="${t.id}">${t.label}</option>`).join("");
+  ["season", "tank", "page", "key"].forEach(id => $(id).addEventListener("change", id === "page" || id === "key" ? render : resetPage));
+  resetPage();
+}
+function tankData() {
+  return seasons[$("season").value].tanks.find(t => t.tank === $("tank").value);
+}
+function resetPage() {
+  const n = Math.ceil(tankData().records.length / COLS);
+  $("page").innerHTML = Array.from({ length: n }, (_, i) => `<option value="${i}">${i + 1} / ${n}</option>`).join("");
+  render();
+}
+function render() {
+  const t = tankData();
+  const showKey = $("key").checked;
+  const recs = t.records.slice(+$("page").value * COLS, (+$("page").value + 1) * COLS);
+  $("kura").textContent = kura.name;
+  $("tankLabel").textContent = kura.tanks.find(k => k.id === t.tank).label;
+  $("kind").textContent = t.kind;
+  $("soe").textContent = t.soe_date;
+  $("grid").innerHTML = ROWS.map(([name, f, cls]) =>
+    `<tr class="${cls || ""}"><th>${name}</th>` +
+    Array.from({ length: COLS }, (_, i) => {
+      const v = showKey && recs[i] ? f(recs[i]) : "";
+      return `<td class="${showKey ? "key" : ""}">${v ?? ""}</td>`;
+    }).join("") + "</tr>"
+  ).join("");
+}
+load();
+</script>
+</body>
+</html>
