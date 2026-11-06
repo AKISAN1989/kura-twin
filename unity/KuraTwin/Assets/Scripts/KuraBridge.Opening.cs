@@ -1,15 +1,15 @@
 using UnityEngine;
 
-// 初めて開いたときのオープニング（6〜8秒）：蔵の大戸が開き、朝の光が差し込む中をカメラがゆっくり入っていく。
+// 開いたときのオープニング（6〜8秒）：蔵の大戸が開き、朝の光が差し込む中をカメラがゆっくり入っていく。
 // 足場の上の杜氏がこちらを振り向き「よう来たな」と一言。そのまま蔵全体の視点に落ち着く。
 // 画面を触る（クリック・タップ・スクロール・キー）とすぐ飛ばせる。大戸と表の壁はオープニングのあいだだけ組み立てる（3Dのファイルは増やさない）。
-// Web 側からは setCamera("opening") で始める（初めて開いたときだけ。?opening=1 で何度でも）
+// Web 側からは setCamera("opening", "hold") で閉じた大戸の前に止め、読み込み中の画面が消えたら setCamera("opening", "go") で動かす（開くたびに再生）
 public partial class KuraBridge
 {
     const float OpeningTime = 7.5f;
     const float DoorX = 1.5f, DoorZ = -19.5f, DoorHalf = 2.1f, DoorH = 4.2f; // 大戸口（入口は手前の右寄り）
 
-    bool opening, openingSpoke, swallowPointer;
+    bool opening, openingSpoke, swallowPointer, openingHeld;
     float openingT;
     Transform openingRoot, doorL, doorR;
     Vector3 opP0, opPm, opP1, opL0, opLm, opL1;
@@ -91,7 +91,7 @@ public partial class KuraBridge
     // 毎フレーム（Update のカメラの代わりに呼ぶ）
     void UpdateOpening(float dt)
     {
-        openingT += dt;
+        if (!openingHeld) openingT += dt; // 読み込み中の画面が消えるまでは、閉じた大戸の前で待つ
         float t = openingT;
         // 大戸：0.8〜2.8秒で左右に開く
         float o = Ease((t - 0.8f) / 2f);

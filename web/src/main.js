@@ -231,19 +231,14 @@ window.kuraOnPatrol = (id, step, temp) => {
 window.kuraOnUnityReady = () => {
   app.resend();
   app.emit("unity-ready");
-  // オープニング（大戸が開き、杜氏が「よう来たな」）：初めて開いたときだけ。?opening=1 なら何度でも
-  const OPENING_KEY = "kura.opening.seen";
-  let seen = false;
-  try { seen = localStorage.getItem(OPENING_KEY) === "1"; } catch {}
-  if (!seen || new URLSearchParams(location.search).has("opening")) {
-    try { localStorage.setItem(OPENING_KEY, "1"); } catch {}
-    // 読み込み中の画面が消えてから始める（大戸が閉まっているところから見えるように）
-    const start = (tries = 0) => {
-      if ($("unity-status") && tries < 60) { setTimeout(() => start(tries + 1), 100); return; }
-      bridge.setCamera("opening");
-    };
-    start();
-  }
+  // オープニング（大戸が開き、杜氏が「よう来たな」）：開くたびに再生する。
+  // すぐに閉じた大戸の前へカメラを移して止めておき（ほかの視点が一瞬見えないように）、読み込み中の画面が消えてから動かす
+  bridge.setCamera("opening", "hold");
+  const go = (tries = 0) => {
+    if ($("unity-status") && tries < 60) { setTimeout(() => go(tries + 1), 100); return; }
+    bridge.setCamera("opening", "go");
+  };
+  go();
 };
 
 // ---------- 今と過去の表示（3Dの上） ----------

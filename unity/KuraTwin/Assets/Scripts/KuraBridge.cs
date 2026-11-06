@@ -243,7 +243,13 @@ public partial class KuraBridge : MonoBehaviour
     {
         var msg = JsonUtility.FromJson<CameraMsg>(json);
         if (msg == null) return;
-        if (msg.mode == "opening") { StartOpening(); return; }
+        if (msg.mode == "opening")
+        {
+            // "hold"：閉じた大戸の前で止めておく。"go"：動かし始める（止めていなければ最初から）
+            if (msg.id == "go" && opening) openingHeld = false;
+            else { StartOpening(); openingHeld = msg.id == "hold"; }
+            return;
+        }
         if (opening) return; // オープニングのあいだは、ほかの視点の指示を受けない（終われば蔵全体に落ち着く）
         guideCam = false;
         freeCam = false;
