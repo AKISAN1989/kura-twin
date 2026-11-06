@@ -54,7 +54,7 @@ function card(event, isToday) {
   let body;
   if (q) {
     body = `<p class="question">${esc(q)}</p>
-      <textarea rows="3" data-answer="${esc(event.id)}" placeholder="杜氏の答え（文字か声で）">${esc(drafts.get(event.id) ?? "")}</textarea>
+      <textarea rows="3" data-answer="${esc(event.id)}" placeholder="杜氏の答え（文字か声で。ひとことで大丈夫です）">${esc(drafts.get(event.id) ?? "")}</textarea>
       <div class="row"><button type="button" class="primary" data-save="${esc(event.id)}">判断メモとして保存</button>
       <button type="button" class="mic" data-mic="${esc(event.id)}" hidden>🎤 声で入力</button></div>`;
   } else if (asking.has(event.id)) {
@@ -80,7 +80,7 @@ function render() {
 
   if (!app.isCurrent) {
     const memos = store.allMemos().filter(m => m.season === app.season).sort((a, b) => a.date.localeCompare(b.date));
-    box.innerHTML = `<p class="muted">${esc(app.season)}年の判断メモ（杜氏への質問は今季だけ）。</p>
+    box.innerHTML = `<p class="lead">${esc(app.season)}年に杜氏が残した判断メモ</p>
       ${memos.map(m => `<button type="button" class="memo-link" data-memo="${esc(m.id)}">${esc(app.tankLabel(m.tank))}
         <span class="muted">${esc(m.date.slice(5).replace("-", "/"))} 日順${m.moromi_day}</span> ${esc(m.change)}</button>`).join("")}`;
     box.querySelectorAll("[data-memo]").forEach(b => { b.onclick = () => showMemoFn(store.allMemos().find(m => m.id === b.dataset.memo)); });
@@ -94,8 +94,8 @@ function render() {
   const todaysMemos = store.savedMemos.filter(m => m.date === app.date && m.season === app.season);
 
   box.innerHTML = `
-    <p class="muted">決まったルールで見つけた変化に、Claude が1つずつ短く質問します。答えは判断メモとしてタンクと日付に結びつきます。</p>
-    <h3>${esc(app.date.slice(5).replace("-", "/"))} の変化</h3>
+    <p class="lead">変化に Claude が1つずつ聞きます。答えが「判断メモ」になります。</p>
+    <h3>${Number(app.date.slice(5, 7))}月${Number(app.date.slice(8, 10))}日の変化</h3>
     ${today.filter(e => !answered.has(e.id)).map(e => card(e, true)).join("") || `<p class="muted">この日の未回答の変化はありません。</p>`}
     ${todaysMemos.length ? `<h3>この日の判断メモ</h3>${todaysMemos.map(m => `<button type="button" class="memo-link" data-memo="${esc(m.id)}">${esc(app.tankLabel(m.tank))} ${esc(m.change)}</button>`).join("")}` : ""}
     ${pending.length ? `<h3>前の日の未回答</h3>${pending.map(e => card(e, false)).join("")}` : ""}

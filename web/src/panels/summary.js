@@ -12,7 +12,7 @@ let pendingKey = null;
 async function run() {
   const out = $("summary-out");
   const id = app.selected;
-  if (!id) { out.innerHTML = `<p class="muted">タンクを選ぶと、その日の状態を2〜3行で表示します。</p>`; return; }
+  if (!id) { out.innerHTML = ""; return; }
   const tank = app.tank(id);
   const recs = tank.records.filter(r => r.date <= app.date);
   const today = recs[recs.length - 1];
@@ -40,11 +40,12 @@ function show(res, similar) {
   const out = $("summary-out");
   out.innerHTML = `<div class="summary">${res.lines.map(l => `<p>${esc(l)}</p>`).join("")}
     ${res.similar && similar ? `<button type="button" class="memo-link" data-memo="${esc(similar.memo.id)}">${esc(res.similar)}</button>` : ""}</div>
-    <p class="muted small">数値と備考だけから書いた要約です。評価や助言は含みません。</p>`;
+    <p class="muted small">数値と備考だけから Claude がまとめたもの（評価や助言はしません）</p>`;
   out.querySelector("[data-memo]")?.addEventListener("click", () => showMemoFn(similar.memo));
 }
 
 export function initSummary({ showMemo }) {
   showMemoFn = showMemo;
-  app.onChange(kind => { if (app.tab === "summary" && kind !== "memo") run(); });
+  // タンクを選んだとき（日付や季を変えたときも）、選んだタンクの情報の中に要約を出す
+  app.onChange(kind => { if (kind !== "memo" && kind !== "tab") run(); });
 }

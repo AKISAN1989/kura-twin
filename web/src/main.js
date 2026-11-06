@@ -11,6 +11,16 @@ import { initImport } from "./panels/import.js";
 const $ = id => document.getElementById(id);
 
 // ---------- 3D（Unity版） ----------
+// 3Dの上では、ページの拡大（トラックパッドのピンチ）・右クリックのメニュー・スクロールをさせず、蔵の操作に使う
+function guardCanvas(canvas) {
+  // 操作のヒント：スマホは指の言い方にし、いちど触ったら消す
+  const hint = $("stage-hint");
+  if (matchMedia("(pointer: coarse)").matches) hint.textContent = "指で回す・2本指で寄る・タンクを押して近づく";
+  canvas.addEventListener("pointerdown", () => hint.classList.add("gone"), { once: true });
+  canvas.addEventListener("wheel", e => e.preventDefault(), { passive: false });
+  canvas.addEventListener("contextmenu", e => e.preventDefault());
+  canvas.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
+}
 async function startUnity() {
   const base = "unity/Build/kura";
   const status = $("unity-status");
@@ -50,6 +60,7 @@ async function startUnity() {
     status.classList.add("done");
     setTimeout(() => status.remove(), 700);
     bridge.attachUnity(instance);
+    guardCanvas($("unity-canvas"));
   } catch (e) {
     fail(`3Dを表示できませんでした：${e.message ?? e}`);
   }
@@ -58,6 +69,7 @@ async function startUnity() {
 // 杜氏の吹き出し：Unity が頭の位置（画面の割合、y は下から）を毎フレーム知らせてくる
 window.kuraOnTojiBubble = (text, x, y, visible) => {
   const el = $("toji-bubble");
+  el.parentElement.classList.toggle("talking", !!(text && visible)); // 話しているあいだは操作のヒントを隠す
   if (!text || !visible) { el.hidden = true; return; }
   el.hidden = false;
   if (el.textContent !== text) el.textContent = text;
@@ -124,7 +136,8 @@ function renderDay() {
   $("day-slider").max = String(app.calendar.length - 1);
   $("day-slider").value = String(app.dayIndex);
   const d = app.date;
-  $("day-label").textContent = `${d.slice(5).replace("-", "/")}${app.isCurrent && d === app.seasonData.today ? "（今日）" : ""}`;
+  $("day-label").textContent = `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日${app.isCurrent && d === app.seasonData.today ? "（今日）" : ""}`;
+  document.body.classList.toggle("past", app.isPast); // 今季は暖かい色、過去は青みのある色（左の3Dと揃える）
   renderTankButtons();
   renderTankDetail();
 }
@@ -140,6 +153,7 @@ function renderTankButtons() {
 function renderTankDetail() {
   const box = $("tank-detail");
   const id = app.selected;
+  $("tank-summary").hidden = !id;
   if (!id) { box.hidden = true; return; }
   box.hidden = false;
   const tank = app.tank(id);
@@ -151,13 +165,13 @@ function renderTankDetail() {
     : today.operation === "上槽" ? `${today.date.slice(5).replace("-", "/")} 上槽`
     : today.moromi_day >= 1 ? `留添${today.moromi_day}日目` : today.operation;
   box.innerHTML = `
-    <div class="detail-head"><strong>${esc(app.tankLabel(id))}</strong> <span class="muted">${esc(tank.kind)}・${esc(state)}</span>
+    <div class="detail-head"><strong>${esc(app.tankLabel(id))}</strong> <span class="meta">${esc(tank.kind)}・${esc(state)}</span>
       <button type="button" class="link" id="detail-close">閉じる</button></div>
     ${tankChart(recs, { memoDays: memos.map(m => m.moromi_day), eventDays })}
     <div class="memos">
       ${memos.length ? memos.map(m => `<button type="button" class="memo-link" data-memo="${esc(m.id)}">
           <span class="muted">${esc(m.date.slice(5).replace("-", "/"))} 日順${m.moromi_day}</span> ${esc(m.change)}</button>`).join("")
-        : `<p class="muted">このタンクの判断メモはまだありません。</p>`}
+        : `<p class="muted small">このタンクの判断メモはまだありません。</p>`}
     </div>`;
   $("detail-close").onclick = () => { app.selectTank(null); bridge.setCamera("overview"); };
   box.querySelectorAll("[data-memo]").forEach(b => {

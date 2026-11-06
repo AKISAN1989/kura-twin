@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-7601191945638118411
+--- !u!114 &-5099719976817475753
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -19,7 +19,7 @@ MonoBehaviour:
   tint:
     m_OverrideState: 1
     m_Value: -1
---- !u!114 &-6797171831943977285
+--- !u!114 &-3925706434114704488
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -47,7 +47,7 @@ MonoBehaviour:
   saturation:
     m_OverrideState: 1
     m_Value: -16
---- !u!114 &-5736804065688878360
+--- !u!114 &-3465579447097762408
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -110,11 +110,11 @@ MonoBehaviour:
   m_Name: KuraLookPast
   m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.VolumeProfile
   components:
-  - {fileID: -7601191945638118411}
-  - {fileID: -6797171831943977285}
-  - {fileID: 6752632523683789583}
-  - {fileID: -5736804065688878360}
---- !u!114 &6752632523683789583
+  - {fileID: -5099719976817475753}
+  - {fileID: -3925706434114704488}
+  - {fileID: 4413825884487583310}
+  - {fileID: -3465579447097762408}
+--- !u!114 &4413825884487583310
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}

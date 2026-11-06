@@ -63,6 +63,17 @@ public class KuraBridge : MonoBehaviour
     const float DeckMinX = -7.5f, DeckMaxX = 7.4f; // 足場の端（はしごと手すりの手前）
     const float StandZ = 0.3f;                     // 足場の中心からタンク側へ寄る量（手すりは ±0.66）
 
+    // 自由なカメラ：ドラッグで回転、スクロール（ピンチ）で拡大・縮小、右ドラッグ（2本指）で平行移動。
+    // 「蔵全体」「杜氏の目線」「杜氏の案内」は自動のカメラ。利用者が触った時点で自由なカメラに切り替わる
+    bool freeCam, pressing;
+    Vector3 pivot, pivotTarget;
+    float yaw, yawTarget, pitch, pitchTarget, dist, distTarget;
+    Vector2 lastPointer, downPointer;
+    float dragAmount;
+    float lastPinch = -1f;
+    static readonly Vector3 CamMin = new Vector3(-11.2f, 0.7f, -22f), CamMax = new Vector3(11.2f, 9.2f, 8.6f); // 壁の内側・床の上
+    static readonly Vector3 PivotMin = new Vector3(-10f, 0f, -9f), PivotMax = new Vector3(10f, 5f, 7.5f);
+
     // 時を巻き戻す：過去の記録を見ているあいだは、朝の斜めの光と少し冷たい空気にする
     Light sun;
     Light[] lamps = new Light[0];
@@ -184,6 +195,7 @@ public class KuraBridge : MonoBehaviour
         var msg = JsonUtility.FromJson<CameraMsg>(json);
         if (msg == null) return;
         guideCam = false;
+        freeCam = false;
         if (msg.mode == "toji" && tanks.TryGetValue(msg.id ?? "", out var t)) SetTojiView(t);
         else SetOverview();
     }
@@ -224,6 +236,7 @@ public class KuraBridge : MonoBehaviour
         Speak(""); // 歩いているあいだは吹き出しを出さない
         walking = true;
         guideCam = true;
+        freeCam = false;
         overview = false;
         targetFov = 50f;
     }
@@ -275,6 +288,122 @@ public class KuraBridge : MonoBehaviour
             {
                 camTargetPos = arriveCamPos;
                 camLookAt = arriveLookAt;
+            }
+        }
+    }
+
+    static Vector3 Clamp(Vector3 v, Vector3 min, Vector3 max) =>
+        new Vector3(Mathf.Clamp(v.x, min.x, max.x), Mathf.Clamp(v.y, min.y, max.y), Mathf.Clamp(v.z, min.z, max.z));
+
+    /// <summary>今のカメラの位置から、自由なカメラに切り替える（その場から続けて動かせるように）</summary>
+    void EnterFree()
+    {
+        if (freeCam || cam == null) return;
+        freeCam = true;
+        overview = false;
+        guideCam = false;
+        pivot = pivotTarget = Clamp(camLookAtCurrent, PivotMin, PivotMax);
+        var d = cam.transform.position - pivot;
+        dist = distTarget = Mathf.Clamp(d.magnitude, 2.5f, 26f);
+        var n = d.normalized;
+        yaw = yawTarget = Mathf.Atan2(-n.x, -n.z) * Mathf.Rad2Deg;
+        pitch = pitchTarget = Mathf.Clamp(Mathf.Asin(n.y) * Mathf.Rad2Deg, 5f, 85f);
+    }
+
+    void Orbit(Vector2 delta)
+    {
+        EnterFree();
+        yawTarget += delta.x * 0.25f;
+        pitchTarget = Mathf.Clamp(pitchTarget - delta.y * 0.2f, 5f, 85f);
+    }
+
+    void Pan(Vector2 delta)
+    {
+        EnterFree();
+        float s = distTarget * 0.0016f;
+        var right = cam.transform.right; right.y = 0f; right.Normalize();
+        var fwd = cam.transform.forward; fwd.y = 0f; fwd.Normalize();
+        pivotTarget = Clamp(pivotTarget - right * delta.x * s - fwd * delta.y * s, PivotMin, PivotMax);
+    }
+
+    void Zoom(float amount)
+    {
+        EnterFree();
+        distTarget = Mathf.Clamp(distTarget * Mathf.Exp(-amount), 2.5f, 26f);
+    }
+
+    /// <summary>タンクへなめらかに寄る（クリック・タップ）</summary>
+    void FocusTank(Tank t)
+    {
+        EnterFree();
+        var p = t.root.position;
+        pivotTarget = Clamp(new Vector3(p.x, KuraScene.PlinthHeight + KuraScene.TankHeight * 0.7f, p.z), PivotMin, PivotMax);
+        distTarget = 7.5f;
+        pitchTarget = Mathf.Max(pitchTarget, 38f);
+    }
+
+    void HandleInput()
+    {
+        if (cam == null) return;
+        // スマホ：1本指で回転、2本指でつまんで拡大・縮小と平行移動、軽く触れてタンクを選ぶ
+        if (Input.touchCount > 0)
+        {
+            if (Input.touchCount == 1)
+            {
+                var t = Input.GetTouch(0);
+                lastPinch = -1f;
+                if (t.phase == TouchPhase.Began) { dragAmount = 0f; }
+                else if (t.phase == TouchPhase.Moved) { dragAmount += t.deltaPosition.magnitude; if (dragAmount > 8f) Orbit(t.deltaPosition); }
+                else if (t.phase == TouchPhase.Ended && dragAmount <= 8f) Pick(t.position);
+            }
+            else
+            {
+                var a = Input.GetTouch(0); var b = Input.GetTouch(1);
+                float pinch = Vector2.Distance(a.position, b.position);
+                if (lastPinch > 0f) Zoom((pinch - lastPinch) * 0.006f);
+                lastPinch = pinch;
+                Pan((a.deltaPosition + b.deltaPosition) * 0.5f);
+                dragAmount = 999f; // 2本指のあとはタップとして扱わない
+            }
+            return;
+        }
+        lastPinch = -1f;
+
+        // マウス：左ドラッグで回転、右（または中）ドラッグで平行移動、ホイール（トラックパッドのピンチ）で拡大・縮小
+        Vector2 mp = Input.mousePosition;
+        // 押して離すのが同じ瞬間に届いたときも、クリックとして扱う
+        if (!pressing && Input.GetMouseButtonUp(0)) { Pick(mp); return; }
+        if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(2))
+        {
+            pressing = true; dragAmount = 0f; lastPointer = downPointer = mp;
+        }
+        if (pressing)
+        {
+            var delta = mp - lastPointer;
+            lastPointer = mp;
+            dragAmount += delta.magnitude;
+            if (dragAmount > 5f)
+            {
+                if (Input.GetMouseButton(0) && !Input.GetKey(KeyCode.LeftShift)) Orbit(delta);
+                else if (Input.GetMouseButton(1) || Input.GetMouseButton(2) || Input.GetMouseButton(0)) Pan(delta);
+            }
+            if (Input.GetMouseButtonUp(0) && dragAmount <= 5f) Pick(mp);
+            if (!Input.GetMouseButton(0) && !Input.GetMouseButton(1) && !Input.GetMouseButton(2)) pressing = false;
+        }
+        float scroll = Input.mouseScrollDelta.y;
+        if (Mathf.Abs(scroll) > 0.001f) Zoom(Mathf.Clamp(scroll, -3f, 3f) * 0.12f);
+    }
+
+    // クリック（タップ）したタンクを選び、そこへ寄る
+    void Pick(Vector2 screen)
+    {
+        if (Physics.Raycast(cam.ScreenPointToRay(screen), out var hit, 100f))
+        {
+            var target = hit.collider.GetComponent<TankClickTarget>();
+            if (target != null)
+            {
+                KuraTankClicked(target.tankId);
+                if (tanks.TryGetValue(target.tankId, out var t)) FocusTank(t);
             }
         }
     }
@@ -429,22 +558,35 @@ public class KuraBridge : MonoBehaviour
         UpdatePast(Time.deltaTime);
         UpdateToji(Time.deltaTime);
 
+        HandleInput();
+
         if (cam != null)
         {
             if (overview) SetOverview(); // 画面の大きさが変わっても全体が入るように
-            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, targetFov, k);
-            cam.transform.position = Vector3.Lerp(cam.transform.position, camTargetPos, k);
-            camLookAtCurrent = Vector3.Lerp(camLookAtCurrent, camLookAt, k);
-            cam.transform.LookAt(camLookAtCurrent);
-        }
-
-        // クリックでタンクを選ぶ
-        if (Input.GetMouseButtonDown(0) && cam != null)
-        {
-            if (Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out var hit, 100f))
+            float kc = k;
+            if (freeCam)
             {
-                var target = hit.collider.GetComponent<TankClickTarget>();
-                if (target != null) KuraTankClicked(target.tankId);
+                // 自由なカメラ：触った動きにすぐ追いつくよう、少し速く寄せる
+                kc = 1f - Mathf.Exp(-Time.deltaTime * 12f);
+                yaw = Mathf.LerpAngle(yaw, yawTarget, kc);
+                pitch = Mathf.Lerp(pitch, pitchTarget, kc);
+                dist = Mathf.Lerp(dist, distTarget, kc);
+                pivot = Vector3.Lerp(pivot, pivotTarget, kc);
+                var pos = pivot + Quaternion.Euler(pitch, yaw, 0f) * (Vector3.back * dist);
+                camTargetPos = Clamp(pos, CamMin, CamMax);
+                camLookAt = pivot;
+                targetFov = 45f;
+                cam.transform.position = camTargetPos;
+                camLookAtCurrent = pivot;
+                cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, targetFov, kc);
+                cam.transform.LookAt(pivot);
+            }
+            else
+            {
+                cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, targetFov, kc);
+                cam.transform.position = Vector3.Lerp(cam.transform.position, camTargetPos, kc);
+                camLookAtCurrent = Vector3.Lerp(camLookAtCurrent, camLookAt, kc);
+                cam.transform.LookAt(camLookAtCurrent);
             }
         }
 

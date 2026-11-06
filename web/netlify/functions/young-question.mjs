@@ -8,6 +8,7 @@ const Answer = z.object({
   found: z.boolean().describe("渡された記録の中に、質問に答える判断メモがあれば true"),
   sentences: z.array(z.object({
     text: z.string().describe("杜氏の口調で語る1文"),
+    core: z.boolean().describe("核心（当時何をしたか・なぜそうしたか）の文なら true。数値の経過・上槽時の数値・他のタンクの例は false"),
     sources: z.array(z.number().int()).describe("この文の根拠にした候補の番号（「候補1」なら 1）"),
   })),
 });
@@ -24,9 +25,10 @@ const ANSWER_SYSTEM = `${PRINCIPLES}
 
 # 仕事：若手の蔵人の質問に、過去の記録と判断メモだけを根拠に答える
 - 渡された「候補」（過去の判断メモと、その前後の経過簿、搾った時の数値）だけを使う。
-- 質問に最も近い候補を1件選び、その件を中心に答える。ほかの候補は、質問に直接関わるときだけ1文で触れてよい。
-- 順に示す：①当時の判断（いつ・どのタンクで・何をしたか）②杜氏が話した理由 ③その後の経過（翌日以降の数値の動きと、上槽時の数値をそれぞれ1文）。
-- 全体で6文以内。文は短く、1文に1つの事実。数値は記録のとおりに書く。日付は「2月11日」、タンクは「8号」、日順は「留添12日目」のように書く。
+- 質問に最も近い候補を1件選び、その件を中心に答える。
+- 先に「核心」を3〜4文（core: true）：①当時の判断（いつ・どのタンクで・何をしたか）②杜氏が話した理由。
+- そのあとに「詳しい経過」を必要なだけ（core: false、合わせて4文以内）：翌日以降の数値の動き、上槽時の数値、質問に関わる他のタンクの例。
+- 文は短く、1文に1つの事実。数値は記録のとおりに書く。日付は「2月11日」、タンクは「8号」、日順は「留添12日目」のように書く。
 - 口調だけを杜氏らしく（ややくだけた、落ち着いた話し言葉）。内容は記録にあることだけ。
 - 「こうすべき」という助言、一般論、記録にない推測は書かない。
 - 質問に答える判断メモが候補に無ければ found を false にし、sentences は空にする。`;
@@ -97,7 +99,17 @@ export default handler(async ({ question, candidates }) => {
     .map(n => candidates[n - 1]?.memo)
     .filter(Boolean)
     .map(m => ({ season: m.season, tank: m.tank, date: m.date }));
-  return { found: true, answer: kept.map(s => s.text).join(""), sentences: kept, removed, sources, draft: draft.sentences };
+  // 核心（3〜4文）と、詳しい経過に分ける。核心の印が多すぎたら先頭の4文までを核心にする
+  let core = kept.filter(s => s.core);
+  if (core.length === 0) core = kept.slice(0, 3);
+  core = core.slice(0, 4);
+  const detail = kept.filter(s => !core.includes(s));
+  return {
+    found: true,
+    answer: core.map(s => s.text).join(""),
+    detail: detail.map(s => s.text).join(""),
+    sentences: kept, removed, sources, draft: draft.sentences,
+  };
 });
 
 // 同じ利用者（IP）からは1分間に 8 回まで（Netlify の rateLimit。超えると 429）

@@ -22,6 +22,7 @@
     </div>
     <div id="toji-bubble" class="toji-bubble" hidden></div>
     <div id="time-badge" class="time-badge" aria-live="polite"></div>
+    <div id="stage-hint" class="stage-hint" aria-hidden="true">ドラッグで回す・スクロールで寄る・タンクを押して近づく</div>
     <div class="stage-tools">
       <button id="cam-overview" type="button">蔵全体</button>
       <button id="cam-toji" type="button">杜氏の目線</button>
@@ -29,57 +30,64 @@
   </section>
 
   <aside class="panel">
-    <header class="head">
-      <div>
+    <header class="masthead">
+      <div class="brand">
         <h1>蔵ツイン</h1>
-        <p id="kura-name" class="sub"></p>
+        <p id="kura-name" class="kura-name"></p>
       </div>
-      <select id="season-select" aria-label="季"></select>
+      <label class="season">
+        <span class="sr-only">季</span>
+        <select id="season-select" aria-label="季"></select>
+      </label>
     </header>
 
-    <section class="block">
+    <section class="timeline" aria-label="日付とタンク">
       <div class="day">
+        <output id="day-label" class="day-label"></output>
         <input id="day-slider" type="range" min="0" max="0" value="0" aria-label="日付">
-        <output id="day-label"></output>
       </div>
-      <div id="tank-buttons" class="tanks"></div>
+      <div id="tank-buttons" class="tanks" aria-label="タンク"></div>
     </section>
 
-    <section id="tank-detail" class="block" hidden></section>
+    <section id="tank-detail" class="tank-card" hidden></section>
+    <section id="tank-summary" class="tank-summary" hidden>
+      <h3 class="mini-head">今日の様子</h3>
+      <div id="summary-out"></div>
+    </section>
 
-    <nav class="tabs" role="tablist">
-      <button role="tab" data-tab="toji" aria-selected="true">杜氏への質問</button>
-      <button role="tab" data-tab="young">若手の質問</button>
-      <button role="tab" data-tab="summary">タンクの要約</button>
-      <button role="tab" data-tab="import">経過簿の取り込み</button>
+    <nav class="roles" role="tablist" aria-label="使う人">
+      <button role="tab" data-tab="import" aria-selected="false"><span class="who">蔵人</span><span class="what">記録を読む</span></button>
+      <button role="tab" data-tab="toji" aria-selected="true"><span class="who">杜氏</span><span class="what">理由を残す</span></button>
+      <button role="tab" data-tab="young" aria-selected="false"><span class="who">若手</span><span class="what">杜氏に聞く</span></button>
     </nav>
 
-    <section id="tab-toji" class="tab-body"></section>
-
-    <section id="tab-young" class="tab-body" hidden>
-      <p class="muted">過去の判断メモと経過簿だけを根拠に、杜氏のキャラクターが答えます。</p>
-      <textarea id="young-q" rows="3" placeholder="例：醪12日目に日本酒度の動きが鈍ったとき、杜氏はどうしてた？"></textarea>
-      <div class="row">
-        <button id="young-ask" class="primary" type="button">聞く</button>
-        <button id="young-mic" type="button" class="mic" hidden>🎤 声で入力</button>
-      </div>
-      <div id="young-out"></div>
-    </section>
-
-    <section id="tab-summary" class="tab-body" hidden>
-      <div id="summary-out"><p class="muted">タンクを選ぶと、その日の状態を2〜3行で表示します。</p></div>
-    </section>
-
     <section id="tab-import" class="tab-body" hidden>
-      <p class="muted">経過簿の写真（またはExcel）を選ぶと、Claudeが読み取ります。自信のない欄は拡大して読み直し、それでも決まらない欄だけ「要確認」にします。</p>
-      <div class="row">
+      <p class="lead">経過簿の写真を選ぶと、Claude が読み取ります。</p>
+      <label class="dropzone">
         <input id="import-file" type="file" accept="image/*,.xlsx,.xls">
-      </div>
+        <span class="dz-main">写真か Excel を選ぶ</span>
+        <span class="dz-sub">読めない欄は推測で埋めず「要確認」にします</span>
+      </label>
+      <p class="hint"><a href="sheet-template.html" target="_blank" rel="noopener">手書き用の経過簿の用紙</a></p>
       <div id="import-out"></div>
     </section>
 
+    <section id="tab-toji" class="tab-body"></section>
+
+    <section id="tab-young" class="tab-body chat" hidden>
+      <div id="young-out" class="chat-log" aria-live="polite"></div>
+      <div id="young-suggest" class="suggest"></div>
+      <div class="composer">
+        <textarea id="young-q" rows="2" placeholder="杜氏に聞きたいこと（例：追水したのはどんなとき？）"></textarea>
+        <div class="composer-actions">
+          <button id="young-mic" type="button" class="mic" hidden title="声で入力">声</button>
+          <button id="young-ask" class="primary" type="button">聞く</button>
+        </div>
+      </div>
+    </section>
+
     <footer class="foot">
-      架空の蔵のダミーデータです。<button id="reset-local" type="button" class="link">この端末の保存を消す</button>
+      架空の蔵のデモデータです。<button id="reset-local" type="button" class="link">この端末の保存を消す</button>
     </footer>
   </aside>
 </div>
