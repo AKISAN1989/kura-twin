@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 // 蔵ツイン：Webの右側から届く5つの命令（SetDay / HighlightTank / SetCamera / SelectTank / TojiSay）を受けて、
 // 3Dの蔵を動かす。蔵の形はエディタで組み立ててシーンに保存してある（KuraScene）。
 // データは持たない（毎回 JS から JSON で受け取る）。醸造の判断もしない。
-public class KuraBridge : MonoBehaviour
+public partial class KuraBridge : MonoBehaviour
 {
     [Header("材質（エディタの「シーンを用意」で設定）")]
     public KuraPalette palette = new KuraPalette();
@@ -71,8 +71,11 @@ public class KuraBridge : MonoBehaviour
     Quaternion patrolFace;
     float patrolWaitUntil, resumePatrolAt, lean, leanTarget;
     int patrolStep;
+    Tank patrolTank;      // 見回りで向かっている、変化のあったタンク
+    bool pendingWork;     // 着いて向きがそろったら作業を始める
     Transform spineBone, headBone;
     const float PatrolSpeed = 0.45f;
+    const float WorkStandZ = 0.45f; // 作業のときの立ち位置（手すりは ±0.66。体の前が手すりに触れるくらい）
     readonly System.Random patrolRng = new System.Random(7);
 
     // 自由なカメラ：ドラッグで回転、スクロール（ピンチ）で拡大・縮小、右ドラッグ（2本指）で平行移動。
@@ -171,6 +174,7 @@ public class KuraBridge : MonoBehaviour
         var model = toji != null ? toji.Find("TojiModel") : null;
         spineBone = FindDeep(model, "Spine02");
         headBone = FindDeep(model, "Head");
+        InitWork(model);
         resumePatrolAt = 4f;
         fanBlades = FindDeep(kura.Find("Props"), "FanBlades");
         sun = GameObject.Find("Daylight")?.GetComponent<Light>();
@@ -257,6 +261,8 @@ public class KuraBridge : MonoBehaviour
         Speak(""); // 歩いているあいだは吹き出しを出さない
         guiding = true;
         patrolMoving = false;
+        pendingWork = false;
+        AbortWork(); // 若手の質問の案内を優先する
         leanTarget = 0f;
         walking = true;
         guideCam = true;
@@ -343,23 +349,32 @@ public class KuraBridge : MonoBehaviour
             if (dist < 0.03f)
             {
                 patrolMoving = false;
-                patrolWaitUntil = Time.time + (patrolPeek ? 5f : 2.5f);
+                patrolWaitUntil = Time.time + (patrolPeek ? 1.2f : 2.5f);
+                pendingWork = patrolPeek;
                 return;
             }
             var next = toji.position + to / dist * Mathf.Min(dist, PatrolSpeed * dt);
             next.x = Mathf.Clamp(next.x, DeckMinX, DeckMaxX);
-            next.z = Mathf.Clamp(next.z, -StandZ, StandZ);
+            next.z = Mathf.Clamp(next.z, -WorkStandZ, WorkStandZ);
             next.y = KuraScene.DeckHeight;
             toji.position = next;
             Turn(Quaternion.LookRotation(to / dist), dt * 0.6f);
             return;
         }
-        if (Time.time < patrolWaitUntil)
+        if (Time.time < patrolWaitUntil || Working || pendingWork)
         {
-            // 立ち止まって、タンクの方を向き、少し前かがみで中を覗き込む
+            // 立ち止まってタンクの方を向き、櫂入れ → 品温を測る → 帳面に書く。腕の無い仮の人形なら、前かがみで覗き込むだけ
             Turn(patrolFace, dt * 0.5f);
-            leanTarget = patrolPeek && Quaternion.Angle(toji.rotation, patrolFace) < 20f ? 1f : 0f;
-            return;
+            bool facing = Quaternion.Angle(toji.rotation, patrolFace) < 12f;
+            if (pendingWork && facing)
+            {
+                pendingWork = false;
+                StartWork(patrolTank);
+                if (!Working) patrolWaitUntil = Time.time + 5f; // 仮の人形：覗き込み
+            }
+            if (Working) { if (!UpdateWork()) patrolWaitUntil = Time.time + 0.8f; return; }
+            leanTarget = patrolPeek && facing && Time.time < patrolWaitUntil ? 1f : 0f;
+            if (Time.time < patrolWaitUntil || pendingWork) return;
         }
         leanTarget = 0f;
         if (lean > 0.05f) return; // 体を起こしてから次へ
@@ -376,9 +391,11 @@ public class KuraBridge : MonoBehaviour
         if (alerts.Count > 0 && patrolStep % 2 == 1)
         {
             var t = alerts[(patrolStep / 2) % alerts.Count];
+            patrolTank = t;
             var p = t.root.position;
             float side = p.z < 0 ? -1f : 1f;
-            patrolTarget = new Vector3(Mathf.Clamp(p.x, DeckMinX, DeckMaxX), KuraScene.DeckHeight, side * StandZ);
+            // 作業するときは手すりの際まで寄る（櫂を縦に差し入れられるように）
+            patrolTarget = new Vector3(Mathf.Clamp(p.x, DeckMinX, DeckMaxX), KuraScene.DeckHeight, side * WorkStandZ);
             patrolFace = Quaternion.LookRotation(new Vector3(0, 0, side));
             patrolPeek = true;
         }
@@ -398,11 +415,14 @@ public class KuraBridge : MonoBehaviour
     {
         if (toji == null) return;
         lean = Mathf.MoveTowards(lean, leanTarget, Time.deltaTime * 0.9f);
-        if (lean <= 0.001f) return;
-        float e = Mathf.SmoothStep(0f, 1f, lean);
-        var axis = toji.right;
-        if (spineBone != null) spineBone.rotation = Quaternion.AngleAxis(24f * e, axis) * spineBone.rotation;
-        if (headBone != null) headBone.rotation = Quaternion.AngleAxis(16f * e, axis) * headBone.rotation;
+        if (lean > 0.001f)
+        {
+            float e = Mathf.SmoothStep(0f, 1f, lean);
+            var axis = toji.right;
+            if (spineBone != null) spineBone.rotation = Quaternion.AngleAxis(24f * e, axis) * spineBone.rotation;
+            if (headBone != null) headBone.rotation = Quaternion.AngleAxis(16f * e, axis) * headBone.rotation;
+        }
+        LateUpdateWork(); // 前かがみのあとで、腕を道具に合わせる
     }
 
     static Vector3 Clamp(Vector3 v, Vector3 min, Vector3 max) =>
@@ -736,6 +756,17 @@ public class KuraBridge : MonoBehaviour
         // 話すあいだだけ、うなずきの層（首と頭）をふわっと効かせる
         if (tojiAnimator != null && tojiAnimator.layerCount > 1)
             tojiAnimator.SetLayerWeight(1, Mathf.MoveTowards(tojiAnimator.GetLayerWeight(1), Time.time < nodUntil ? 1f : 0f, Time.deltaTime * 3f));
+
+        // 見回りの品温（目盛りを読んだときだけ、小さく）
+        if (string.IsNullOrEmpty(bubbleText) && cam != null && tojiHead != null && !string.IsNullOrEmpty(workBubble))
+        {
+            if (Time.time > workBubbleUntil) { workBubble = ""; KuraBubble("", 0, 0, 0); }
+            else
+            {
+                var sp = cam.WorldToScreenPoint(tojiHead.position + Vector3.up * 0.3f);
+                KuraBubble(workBubble, sp.x / Screen.width, sp.y / Screen.height, sp.z > 0 ? 1 : 0);
+            }
+        }
 
         // 吹き出しの位置を Web 側へ（日本語の文字は HTML で描く）
         if (!string.IsNullOrEmpty(bubbleText) && cam != null && tojiHead != null)

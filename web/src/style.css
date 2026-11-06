@@ -106,6 +106,24 @@ input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 
 .tanks button.alert::after { content: ""; position: absolute; top: -4px; right: -4px; width: 11px; height: 11px; border-radius: 50%;
   background: var(--alert); border: 2px solid var(--paper); }
 
+/* 杜氏の見回り（蔵での作業と、経過簿の関係） */
+.patrol-card { margin: 12px 20px 0; padding: 10px 14px; border-radius: 12px; background: #fff; border: 1px solid var(--line);
+  transition: opacity .6s; font-size: 14px; }
+.patrol-card.fading { opacity: 0; }
+.patrol-head { display: flex; gap: 8px; align-items: baseline; color: var(--muted); font-size: 13px; }
+.patrol-head strong { font-family: var(--mincho); font-size: 18px; color: var(--ink); }
+.patrol-steps { display: flex; gap: 6px; list-style: none; padding: 0; margin: 6px 0 8px; flex-wrap: wrap; }
+.patrol-steps li { padding: 3px 10px; border-radius: 999px; background: var(--paper-2); color: var(--muted); font-size: 13px; }
+.patrol-steps li.now { background: var(--accent); color: #fff; font-weight: 600; }
+.patrol-steps li.done { color: var(--ink); }
+.patrol-steps li.done::before { content: "✓ "; color: var(--ok); }
+.patrol-sheet { border-collapse: collapse; width: 100%; font-size: 13px; text-align: center; }
+.patrol-sheet th { font-weight: normal; color: var(--muted); border-bottom: 1px solid var(--line); padding: 2px 4px; }
+.patrol-sheet td { padding: 4px; font-variant-numeric: tabular-nums; }
+.patrol-sheet td.glow { color: #fff; background: var(--accent); border-radius: 6px; font-weight: 700; animation: written 1.6s ease-out; }
+@keyframes written { 0% { box-shadow: 0 0 0 0 rgba(184,88,42,.7); transform: scale(1.25); } 100% { box-shadow: 0 0 0 10px rgba(184,88,42,0); transform: scale(1); } }
+.toji-bubble.short { padding: 4px 10px; font-size: 13px; font-weight: 700; max-width: none; }
+
 /* 選んだタンク */
 .tank-card, .tank-summary { margin: 0 20px; padding: 14px 16px; border-radius: 12px; background: #fff; border: 1px solid var(--line);
   box-shadow: 0 1px 0 rgba(255,255,255,.8) inset, 0 2px 8px rgba(80,60,30,.06); }

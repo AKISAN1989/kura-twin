@@ -73,6 +73,7 @@ window.kuraOnTojiBubble = (text, x, y, visible) => {
   if (!text || !visible) { el.hidden = true; return; }
   el.hidden = false;
   if (el.textContent !== text) el.textContent = text;
+  el.classList.toggle("short", [...text].length <= 8); // 見回りの品温（「11.0℃」）は小さな吹き出し
   const w = el.parentElement.clientWidth, h = el.parentElement.clientHeight;
   // 上の余白：カメラのボタンと日付の表示（狭い画面ではボタンの下にある）に重ならないように。入りきらない分はスクロール
   const badge = $("time-badge");
@@ -95,6 +96,32 @@ window.kuraOnTojiBubble = (text, x, y, visible) => {
     el.style.bottom = `${Math.max(8, Math.min(y * h - bh * 0.6, h - bh - top))}px`;
   }
 };
+// ---------- 杜氏の見回り（Unity から：kai → temp → write → done） ----------
+const PATROL_STEPS = [["kai", "櫂入れ"], ["temp", "品温を測る"], ["write", "経過簿に書く"]];
+let patrolHideTimer = null;
+window.kuraOnPatrol = (id, step, temp) => {
+  const card = $("patrol-card");
+  clearTimeout(patrolHideTimer);
+  if (step === "done") { card.classList.add("fading"); patrolHideTimer = setTimeout(() => { card.hidden = true; card.classList.remove("fading"); }, 2500); return; }
+  const tank = app.tank(id);
+  const rec = tank?.records.filter(r => r.date <= app.date).pop();
+  if (!rec) return;
+  const idx = PATROL_STEPS.findIndex(([k]) => k === step);
+  const written = step === "write";
+  card.hidden = false;
+  card.classList.remove("fading");
+  card.innerHTML = `
+    <div class="patrol-head"><span>杜氏の見回り</span><strong>${esc(app.tankLabel(id))}</strong></div>
+    <ol class="patrol-steps">${PATROL_STEPS.map(([k, label], i) =>
+      `<li class="${i < idx ? "done" : i === idx ? "now" : ""}">${esc(label)}</li>`).join("")}</ol>
+    <table class="patrol-sheet" aria-label="この日の経過簿">
+      <tr><th>月日</th><th>日順</th><th>品温</th><th>日本酒度</th><th>状ぼう</th></tr>
+      <tr><td>${esc(rec.date.slice(5).replace("-", "/"))}</td><td>${rec.moromi_day ?? "-"}</td>
+        <td class="${written ? "glow" : ""}">${written ? esc(temp || `${rec.temp}℃`) : "…"}</td>
+        <td>${rec.nihonshudo ?? "-"}</td><td>${esc(rec.joubou ?? "-")}</td></tr>
+    </table>`;
+};
+
 window.kuraOnUnityReady = () => { app.resend(); app.emit("unity-ready"); };
 
 // ---------- 今と過去の表示（3Dの上） ----------
