@@ -40,3 +40,9 @@
     Content-Type = "application/octet-stream"
     Content-Encoding = "br"
     Cache-Control = "public, max-age=3600"
+
+# ホーム画面に追加するときの情報（アイコンと名前）
+[[headers]]
+  for = "/site.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json; charset=utf-8"
