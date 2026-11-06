@@ -31,6 +31,8 @@ async function startUnity() {
       dataUrl: `${base}.data`,
       frameworkUrl: `${base}.framework.js`,
       codeUrl: `${base}.wasm`,
+      // ?capture=1 のときだけ、3Dの画面を画像として取り出せるようにする（README・動画の素材用）
+      webglContextAttributes: { preserveDrawingBuffer: new URLSearchParams(location.search).has("capture") },
       companyName: "KuraTwin",
       productName: "KuraTwin",
       productVersion: "0.1",

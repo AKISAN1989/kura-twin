@@ -1,5 +1,7 @@
 // データの読み込みと、ブラウザ内の保存（取り込んだ経過簿・判断メモ・作った質問）。ログインは無し。
-const KEYS = { records: "kura.records.v1", memos: "kura.memos.v1", questions: "kura.questions.v1" };
+// 質問の決まりを変えたら questions の版を上げる。古い版の質問は読み込み時に捨て、新しい決まりで作り直す
+const KEYS = { records: "kura.records.v1", memos: "kura.memos.v1", questions: "kura.questions.v2" };
+const OLD_KEYS = ["kura.questions.v1"];
 
 function readLocal(key, fallback) {
   try {
@@ -47,6 +49,9 @@ export const store = {
     this.currentSeason = cur.season;
     this.pastMemos = memos.memos;
     this.savedMemos = readLocal(KEYS.memos, []);
+    OLD_KEYS.forEach(k => {
+      try { localStorage.removeItem(k); } catch { /* 保存できない環境 */ }
+    });
     this.questions = readLocal(KEYS.questions, {});
     // 取り込んだ経過簿を今季のデータに重ねる
     const imported = readLocal(KEYS.records, {});

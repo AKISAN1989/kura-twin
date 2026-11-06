@@ -20,6 +20,8 @@
   tr.tall td, tr.tall th { height: 20mm; }
   td.key { color: #1a4fb0; font-family: system-ui, sans-serif; font-size: 12px; }
   .foot { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .sheet + .sheet { break-before: page; }
+  .pageno { float: right; font-size: 12px; color: var(--muted); }
   @media print { .controls { display: none; } .sheet { padding: 0; } }
 </style>
 </head>
@@ -28,21 +30,12 @@
   <label>季 <select id="season"><option value="current">今季</option><option value="past">前季</option></select></label>
   <label>タンク <select id="tank"></select></label>
   <label>ページ <select id="page"></select></label>
+  <label><input type="checkbox" id="all"> 全ページ</label>
   <label><input type="checkbox" id="key"> 見本（書き写す値を表示）</label>
   <button onclick="print()">印刷</button>
   <span style="font-size:12px;color:#555">空欄で印刷して手で書き、見本の値を書き写してください。見本の値が読み取りの正解になります。</span>
 </div>
-<div class="sheet">
-  <h1>醪 経 過 表</h1>
-  <div class="meta">
-    <div>蔵名 <span id="kura"></span></div>
-    <div>タンク <span id="tankLabel"></span></div>
-    <div>種類 <span id="kind"></span></div>
-    <div>初添 <span id="soe"></span></div>
-  </div>
-  <table id="grid"></table>
-  <div class="foot">架空の蔵のダミーデータ（蔵ツイン デモ用）</div>
-</div>
+<div id="sheets"></div>
 <script>
 const COLS = 12;
 const ROWS = [
@@ -61,36 +54,54 @@ const ROWS = [
 const $ = id => document.getElementById(id);
 let kura, seasons = {};
 
+// URL で指定できる：?season=current&tank=3&page=1&key=1&all=1（page は 1 から）
+const params = new URLSearchParams(location.search);
+
 async function load() {
   const get = f => fetch("data/" + f).then(r => r.json());
   [kura, seasons.current, seasons.past] = await Promise.all([get("kura.json"), get("season-current.json"), get("season-past.json")]);
   $("tank").innerHTML = kura.tanks.map(t => `<option value="${t.id}">${t.label}</option>`).join("");
-  ["season", "tank", "page", "key"].forEach(id => $(id).addEventListener("change", id === "page" || id === "key" ? render : resetPage));
-  resetPage();
+  if (params.get("season") === "past") $("season").value = "past";
+  if (params.get("tank")) $("tank").value = params.get("tank");
+  $("key").checked = params.get("key") === "1";
+  $("all").checked = params.get("all") === "1";
+  ["season", "tank", "page", "key", "all"].forEach(id => $(id).addEventListener("change", ["page", "key", "all"].includes(id) ? render : resetPage));
+  resetPage(params.get("page") ? Number(params.get("page")) - 1 : 0);
+  document.body.dataset.ready = "1";
 }
 function tankData() {
   return seasons[$("season").value].tanks.find(t => t.tank === $("tank").value);
 }
-function resetPage() {
+function resetPage(start = 0) {
   const n = Math.ceil(tankData().records.length / COLS);
   $("page").innerHTML = Array.from({ length: n }, (_, i) => `<option value="${i}">${i + 1} / ${n}</option>`).join("");
+  $("page").value = String(Math.min(Math.max(0, start), n - 1));
   render();
+}
+function sheetHtml(t, pageIndex, pageCount, showKey) {
+  const recs = t.records.slice(pageIndex * COLS, (pageIndex + 1) * COLS);
+  const esc = v => String(v ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  return `<div class="sheet">
+    <h1>醪 経 過 表${showKey ? "（見本）" : ""}</h1>
+    <div class="meta">
+      <div>蔵名 <span>${esc(kura.name)}</span></div>
+      <div>タンク <span>${esc(kura.tanks.find(k => k.id === t.tank).label)}</span></div>
+      <div>種類 <span>${esc(t.kind)}</span></div>
+      <div>初添 <span>${esc(t.soe_date)}</span></div>
+      <div class="pageno">${pageIndex + 1} / ${pageCount} 枚目</div>
+    </div>
+    <table>${ROWS.map(([name, f, cls]) =>
+      `<tr class="${cls || ""}"><th>${name}</th>` +
+      Array.from({ length: COLS }, (_, i) => `<td class="${showKey ? "key" : ""}">${showKey && recs[i] ? esc(f(recs[i])) : ""}</td>`).join("") + "</tr>"
+    ).join("")}</table>
+    <div class="foot">架空の蔵のダミーデータ（蔵ツイン デモ用）</div>
+  </div>`;
 }
 function render() {
   const t = tankData();
-  const showKey = $("key").checked;
-  const recs = t.records.slice(+$("page").value * COLS, (+$("page").value + 1) * COLS);
-  $("kura").textContent = kura.name;
-  $("tankLabel").textContent = kura.tanks.find(k => k.id === t.tank).label;
-  $("kind").textContent = t.kind;
-  $("soe").textContent = t.soe_date;
-  $("grid").innerHTML = ROWS.map(([name, f, cls]) =>
-    `<tr class="${cls || ""}"><th>${name}</th>` +
-    Array.from({ length: COLS }, (_, i) => {
-      const v = showKey && recs[i] ? f(recs[i]) : "";
-      return `<td class="${showKey ? "key" : ""}">${v ?? ""}</td>`;
-    }).join("") + "</tr>"
-  ).join("");
+  const n = Math.ceil(t.records.length / COLS);
+  const pages = $("all").checked ? [...Array(n).keys()] : [Number($("page").value)];
+  $("sheets").innerHTML = pages.map(i => sheetHtml(t, i, n, $("key").checked)).join("");
 }
 load();
 </script>
