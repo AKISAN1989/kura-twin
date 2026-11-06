@@ -1,50 +1,23 @@
 import * as bridge from "./bridge.js";
-import { allTanksOn, seasonCalendar } from "./tank-state.js";
+import { store } from "./store.js";
+import { app } from "./app.js";
+import { esc } from "./api.js";
+import { tankChart } from "./chart.js";
+import { initToji } from "./panels/toji.js";
+import { initYoung } from "./panels/young.js";
+import { initSummary } from "./panels/summary.js";
+import { initImport } from "./panels/import.js";
 
 const $ = id => document.getElementById(id);
-const TEMP_RANGE = { tempMin: 6, tempMax: 14 }; // 液面の色：6℃＝青 〜 14℃＝赤
 
-const state = { kura: null, season: null, calendar: [], dayIndex: 0, selected: null, highlighted: new Set() };
-
-async function loadJson(path) {
-  const res = await fetch(path);
-  if (!res.ok) throw new Error(`${path} を読み込めませんでした（${res.status}）`);
-  return res.json();
-}
-
-function applyDay() {
-  const date = state.calendar[state.dayIndex];
-  $("day-label").textContent = date.replaceAll("-", "/");
-  bridge.setDay({
-    dayIndex: state.dayIndex,
-    date,
-    ...TEMP_RANGE,
-    // Unity の JsonUtility は null を読めないので、品温が無いときは -999 を送る
-    tanks: allTanksOn(state.season, date, state.kura.tank_capacity_l)
-      .map(t => ({ ...t, temp: t.temp ?? -999, joubou: t.joubou ?? "" })),
-  });
-}
-
-function renderTankButtons() {
-  $("tank-buttons").innerHTML = state.kura.tanks
-    .map(t => `<button data-id="${t.id}" class="${state.selected === t.id ? "on" : ""}">${t.label}</button>`)
-    .join("");
-}
-
-function selectTank(id) {
-  state.selected = state.selected === id ? null : id;
-  bridge.selectTank(state.selected);
-  renderTankButtons();
-}
-
+// ---------- 3D（Unity版） ----------
 async function startUnity() {
   const base = "unity/Build/kura";
   const status = $("unity-status");
-  const loaderUrl = `${base}.loader.js`;
   try {
     await new Promise((resolve, reject) => {
       const s = document.createElement("script");
-      s.src = loaderUrl;
+      s.src = `${base}.loader.js`;
       s.onload = resolve;
       s.onerror = () => reject(new Error("not-built"));
       document.body.appendChild(s);
@@ -78,45 +51,120 @@ window.kuraOnTojiBubble = (text, x, y, visible) => {
   el.style.left = `${Math.min(0.75, Math.max(0.12, x)) * 100}%`;
   el.style.bottom = `${y * 100}%`;
 };
+window.kuraOnUnityReady = () => app.resend();
 
-// Unity 側の準備ができたら呼ばれる（KuraBridge.cs の Start から）
-window.kuraOnUnityReady = () => {
-  applyDay();
-  if (state.selected) bridge.selectTank(state.selected);
-  state.highlighted.forEach(id => bridge.highlightTank(id, true));
-};
+// ---------- 季・日付・タンク ----------
+function renderDay() {
+  $("day-slider").max = String(app.calendar.length - 1);
+  $("day-slider").value = String(app.dayIndex);
+  const d = app.date;
+  $("day-label").textContent = `${d.slice(5).replace("-", "/")}${app.isCurrent && d === app.seasonData.today ? "（今日）" : ""}`;
+  renderTankButtons();
+  renderTankDetail();
+}
+
+function renderTankButtons() {
+  const events = new Set(app.eventsOn().map(e => e.tank));
+  $("tank-buttons").innerHTML = store.kura.tanks.map(t => {
+    const cls = [app.selected === t.id ? "on" : "", events.has(t.id) ? "alert" : ""].join(" ");
+    return `<button type="button" data-id="${t.id}" class="${cls}" title="${events.has(t.id) ? "変化あり" : ""}">${esc(t.label)}</button>`;
+  }).join("");
+}
+
+function renderTankDetail() {
+  const box = $("tank-detail");
+  const id = app.selected;
+  if (!id) { box.hidden = true; return; }
+  box.hidden = false;
+  const tank = app.tank(id);
+  const recs = tank.records.filter(r => r.date <= app.date);
+  const today = recs[recs.length - 1];
+  const memos = store.memosFor(app.season, id).filter(m => m.date <= app.date);
+  const eventDays = app.eventsUpTo().filter(e => e.tank === id).map(e => e.moromi_day);
+  const state = !today ? "まだ仕込み前"
+    : today.operation === "上槽" ? `${today.date.slice(5).replace("-", "/")} 上槽`
+    : today.moromi_day >= 1 ? `留添${today.moromi_day}日目` : today.operation;
+  box.innerHTML = `
+    <div class="detail-head"><strong>${esc(app.tankLabel(id))}</strong> <span class="muted">${esc(tank.kind)}・${esc(state)}</span>
+      <button type="button" class="link" id="detail-close">閉じる</button></div>
+    ${tankChart(recs, { memoDays: memos.map(m => m.moromi_day), eventDays })}
+    <div class="memos">
+      ${memos.length ? memos.map(m => `<button type="button" class="memo-link" data-memo="${esc(m.id)}">
+          <span class="muted">${esc(m.date.slice(5).replace("-", "/"))} 日順${m.moromi_day}</span> ${esc(m.change)}</button>`).join("")
+        : `<p class="muted">このタンクの判断メモはまだありません。</p>`}
+    </div>`;
+  $("detail-close").onclick = () => { app.selectTank(null); bridge.setCamera("overview"); };
+  box.querySelectorAll("[data-memo]").forEach(b => {
+    b.onclick = () => showMemo(store.allMemos().find(m => m.id === b.dataset.memo));
+  });
+}
+
+/** 判断メモ：カメラを杜氏の目線に移し、その日の状態とメモを一緒に見せる */
+function showMemo(memo) {
+  if (!memo) return;
+  app.openMemo(memo);
+  const tank = app.tank(memo.tank);
+  const rec = tank?.records.find(r => r.date === memo.date);
+  const dlg = document.createElement("dialog");
+  dlg.className = "memo-dialog";
+  dlg.innerHTML = `
+    <h3>${esc(memo.season)}年 ${esc(app.tankLabel(memo.tank))} ${esc(memo.date)}（日順${memo.moromi_day}）</h3>
+    <p class="muted">その日の経過簿：品温 ${rec?.temp ?? "-"}℃／日本酒度 ${rec?.nihonshudo ?? "-"}／ボーメ ${rec?.baume ?? "-"}／アルコール分 ${rec?.alcohol ?? "-"}%／状ぼう ${esc(rec?.joubou ?? "-")}／操作 ${esc(rec?.operation ?? "-")}／備考 ${esc(rec?.note ?? "-")}</p>
+    <p><strong>変化：</strong>${esc(memo.change)}</p>
+    <p><strong>質問：</strong>${esc(memo.question)}</p>
+    <p class="answer"><strong>杜氏：</strong>${esc(memo.answer)}</p>
+    ${memo.draft ? `<p class="muted">※ 作者が書いた下書きの判断メモ（架空）</p>` : ""}
+    <form method="dialog"><button>閉じる</button></form>`;
+  document.body.appendChild(dlg);
+  dlg.addEventListener("close", () => { dlg.remove(); bridge.setCamera("overview"); });
+  document.querySelectorAll(".memo-dialog[open]").forEach(d => d.close());
+  dlg.show(); // 3Dの杜氏の目線が見えるよう、画面全体は覆わない
+}
+
+function initTabs() {
+  const tabs = [...document.querySelectorAll("[data-tab]")];
+  tabs.forEach(b => {
+    b.onclick = () => {
+      app.tab = b.dataset.tab;
+      tabs.forEach(t => t.setAttribute("aria-selected", String(t === b)));
+      document.querySelectorAll(".tab-body").forEach(s => { s.hidden = s.id !== `tab-${app.tab}`; });
+      app.emit("tab");
+    };
+  });
+}
 
 async function main() {
-  [state.kura, state.season] = await Promise.all([
-    loadJson("data/kura.json"),
-    loadJson("data/season-current.json"),
-  ]);
-  $("kura-name").textContent = `${state.kura.name}（${state.season.season}年 仕込み）`;
-  state.calendar = seasonCalendar(state.season);
-  state.dayIndex = state.calendar.length - 1;
-  const slider = $("day-slider");
-  slider.max = String(state.calendar.length - 1);
-  slider.value = String(state.dayIndex);
-  slider.addEventListener("input", () => { state.dayIndex = Number(slider.value); applyDay(); });
-
-  renderTankButtons();
+  await store.load();
+  $("kura-name").textContent = store.kura.name;
+  $("season-select").innerHTML = Object.keys(store.seasons).sort().reverse()
+    .map(s => `<option value="${s}">${s}年 仕込み${s === store.currentSeason ? "（今季）" : "（前季）"}</option>`).join("");
+  $("season-select").onchange = e => app.setSeason(e.target.value);
+  $("day-slider").addEventListener("input", e => app.setDayIndex(Number(e.target.value)));
   $("tank-buttons").addEventListener("click", e => {
     const id = e.target.closest("button")?.dataset.id;
-    if (id) selectTank(id);
+    if (id) app.selectTank(app.selected === id ? null : id);
   });
-  bridge.onTankClicked(id => selectTank(id));
-
+  bridge.onTankClicked(id => app.selectTank(id));
   $("cam-overview").onclick = () => bridge.setCamera("overview");
-  $("cam-toji").onclick = () => bridge.setCamera("toji", state.selected ?? state.kura.tanks[0].id);
-  $("hl-toggle").onclick = () => {
-    const id = state.selected ?? "3";
-    const on = !state.highlighted.has(id);
-    on ? state.highlighted.add(id) : state.highlighted.delete(id);
-    bridge.highlightTank(id, on);
+  $("cam-toji").onclick = () => bridge.setCamera("toji", app.selected ?? store.kura.tanks[0].id);
+  $("reset-local").onclick = () => {
+    if (confirm("この端末に保存した取り込み結果・判断メモ・質問を消します。よろしいですか？")) {
+      store.resetLocal();
+      location.reload();
+    }
   };
-  $("toji-say").onclick = () => bridge.tojiSay($("toji-text").value);
 
-  applyDay();
+  app.onChange(kind => {
+    if (kind === "season") $("season-select").value = app.season;
+    if (kind !== "tab") renderDay();
+  });
+  initTabs();
+  initToji({ showMemo });
+  initYoung({ showMemo });
+  initSummary({ showMemo });
+  initImport();
+
+  app.setSeason(store.currentSeason);
   startUnity();
 }
 

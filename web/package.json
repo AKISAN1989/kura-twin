@@ -1,0 +1,19 @@
+{
+  "name": "kura-twin-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "vite": "vite",
+    "build": "vite build",
+    "test": "node --test tests/"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "latest",
+    "vite": "^7.0.0"
+  }
+}

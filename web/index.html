@@ -12,42 +12,65 @@
     <canvas id="unity-canvas" tabindex="-1"></canvas>
     <div id="unity-status" class="unity-status">3Dを読み込んでいます…</div>
     <div id="toji-bubble" class="toji-bubble" hidden></div>
+    <div class="stage-tools">
+      <button id="cam-overview" type="button">蔵全体</button>
+      <button id="cam-toji" type="button">杜氏の目線</button>
+    </div>
   </section>
+
   <aside class="panel">
-    <header>
-      <h1>蔵ツイン</h1>
-      <p id="kura-name" class="sub"></p>
+    <header class="head">
+      <div>
+        <h1>蔵ツイン</h1>
+        <p id="kura-name" class="sub"></p>
+      </div>
+      <select id="season-select" aria-label="季"></select>
     </header>
 
     <section class="block">
-      <h2>日付</h2>
       <div class="day">
-        <input id="day-slider" type="range" min="0" max="0" value="0">
+        <input id="day-slider" type="range" min="0" max="0" value="0" aria-label="日付">
         <output id="day-label"></output>
       </div>
-    </section>
-
-    <section class="block">
-      <h2>タンク</h2>
       <div id="tank-buttons" class="tanks"></div>
-      <div class="row">
-        <button id="cam-overview">蔵全体</button>
-        <button id="cam-toji">杜氏の目線</button>
-        <button id="hl-toggle">光らせる（試し）</button>
-      </div>
     </section>
 
-    <section class="block">
-      <h2>杜氏のキャラクター（試し）</h2>
+    <section id="tank-detail" class="block" hidden></section>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="toji" aria-selected="true">杜氏への質問</button>
+      <button role="tab" data-tab="young">若手の質問</button>
+      <button role="tab" data-tab="summary">タンクの要約</button>
+      <button role="tab" data-tab="import">経過簿の取り込み</button>
+    </nav>
+
+    <section id="tab-toji" class="tab-body"></section>
+
+    <section id="tab-young" class="tab-body" hidden>
+      <p class="muted">過去の判断メモと経過簿だけを根拠に、杜氏のキャラクターが答えます。</p>
+      <textarea id="young-q" rows="3" placeholder="例：醪12日目に日本酒度の動きが鈍ったとき、杜氏はどうしてた？"></textarea>
       <div class="row">
-        <input id="toji-text" type="text" value="3号は、18日目に追水を30L入れとる。">
-        <button id="toji-say">話す</button>
+        <button id="young-ask" class="primary" type="button">聞く</button>
+        <button id="young-mic" type="button" class="mic" hidden>🎤 声で入力</button>
       </div>
+      <div id="young-out"></div>
     </section>
 
-    <section class="block muted">
-      経過簿の取り込み・杜氏への質問・若手の質問・タンクの要約は、このあと作ります。
+    <section id="tab-summary" class="tab-body" hidden>
+      <div id="summary-out"><p class="muted">タンクを選ぶと、その日の状態を2〜3行で表示します。</p></div>
     </section>
+
+    <section id="tab-import" class="tab-body" hidden>
+      <p class="muted">経過簿の写真（またはExcel）を選ぶと、Claudeが読み取ります。自信のない欄は拡大して読み直し、それでも決まらない欄だけ「要確認」にします。</p>
+      <div class="row">
+        <input id="import-file" type="file" accept="image/*,.xlsx,.xls">
+      </div>
+      <div id="import-out"></div>
+    </section>
+
+    <footer class="foot">
+      架空の蔵のダミーデータです。<button id="reset-local" type="button" class="link">この端末の保存を消す</button>
+    </footer>
   </aside>
 </div>
 <script type="module" src="src/main.js"></script>

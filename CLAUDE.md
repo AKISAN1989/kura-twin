@@ -3,7 +3,7 @@
 仕様は [SPEC.md](SPEC.md)。不明点は実装前に作者へ聞く。
 
 ## 設計の原則（作品の中のClaudeにも、開発中のClaude Codeにも適用）
-1. **Claudeは醸造の判断をしない。** 数値の異常・変化の検知はプログラム（`web/config/rules.json` のルール）で行う。Claudeの役割は「記録を読む」「杜氏に聞く」「記録から答える」の3つだけ。
+1. **Claudeは醸造の判断をしない。** 数値の異常・変化の検知はプログラム（`web/public/config/rules.json` のルール）で行う。Claudeの役割は「記録を読む」「杜氏に聞く」「記録から答える」の3つだけ。
 2. **最終判断は常に杜氏。** 出力は記録と理由の提示にとどめ、「こうすべき」という醸造上の助言をしない。
 3. **蔵の入力は増やさない。** 入口は経過簿の写真かExcelのみ。
 4. **根拠のない回答をしない。** 記録にないことは「記録が見つかりません」。推測で数値を埋めない。
@@ -18,12 +18,12 @@
 - 意味のある単位でこまめにコミットする。
 
 ## 構成
-- `web/` … 右側の操作画面（Vite＋素のJS）、Netlify Functions、データ（`web/data/`）、ルール設定（`web/config/`）
+- `web/` … 右側の操作画面（Vite＋素のJS）、Netlify Functions、データ（`web/public/data/`、作り直しは `web/scripts/gen_demo_data.py`）、ルール設定（`web/public/config/rules.json`）
 - `unity/KuraTwin/` … Unity 6 の3D。WebGL で書き出し、`web/public/unity/` に置く
 - 右側→3D の命令は `web/src/bridge.js` の5つだけ：`setDay / highlightTank / setCamera / selectTank / tojiSay`。Unity側の受け口は `KuraBridge` オブジェクト。
 
 ## 用語
-経過簿の項目と醸造用語は `.claude/skills/kura-terms/SKILL.md`（作品内プロンプト用の写しは `web/shared/terms.md`）。日順は**留添を1日目**とする。
+経過簿の項目と醸造用語は `.claude/skills/kura-terms/SKILL.md`（作品内プロンプト用の写しは `web/shared/terms.mjs`）。日順は**留添を1日目**とする。
 
 ## モデル
 - 手書きの読み取り・読み直し・回答・照合：`claude-opus-5-5`

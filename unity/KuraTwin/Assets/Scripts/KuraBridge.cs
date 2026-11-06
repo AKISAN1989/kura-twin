@@ -312,7 +312,7 @@ public class KuraBridge : MonoBehaviour
         overview = false;
         // 杜氏がタンクの縁から覗き込む位置
         var p = t.root.position;
-        camTargetPos = p + new Vector3(0, tankHeight + 1.5f, -1.3f);
+        camTargetPos = p + new Vector3(0, tankHeight + 2.6f, -2.2f);
         camLookAt = p + new Vector3(0, tankHeight * Mathf.Max(0.2f, t.level) * 0.97f, 0.1f);
     }
 

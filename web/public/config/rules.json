@@ -1,0 +1,14 @@
+{
+  "_note": "変化検知のルール（SPEC 3章の初期値）。元蔵人の経験で調整する。変えたら npm test が自動で走る",
+  "apply_from_moromi_day": 2,
+  "temp_change": { "enabled": true, "min_delta_c": 1.0 },
+  "add_water": { "enabled": true, "keywords": ["追水", "追い水", "加水"], "fields": ["operation", "note"] },
+  "stall": { "enabled": true, "window_days": 3, "max_change": 1.0 },
+  "sanity": {
+    "temp": [0, 25],
+    "baume": [0, 12],
+    "nihonshudo": [-60, 20],
+    "alcohol": [0, 22],
+    "acidity": [0, 4]
+  }
+}

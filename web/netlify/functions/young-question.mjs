@@ -1,0 +1,102 @@
+// 4-3 若手の質問への回答 → 4-5 確認役のClaudeが一文ずつ照合し、根拠のない文を削ってから返す
+import { z } from "zod";
+import { askJson, handler, MODELS, PRINCIPLES, HttpError } from "../lib/claude.mjs";
+
+const NOT_FOUND = "記録が見つかりません。";
+
+const Source = z.object({ season: z.string(), tank: z.string(), date: z.string() });
+const Answer = z.object({
+  found: z.boolean().describe("渡された記録の中に、質問に答える判断メモがあれば true"),
+  sentences: z.array(z.object({
+    text: z.string().describe("杜氏の口調で語る1文"),
+    sources: z.array(Source).describe("この文の根拠にした記録・判断メモ"),
+  })),
+});
+
+const Verdicts = z.object({
+  results: z.array(z.object({
+    index: z.number().int(),
+    supported: z.boolean().describe("この文の内容が、渡された記録か判断メモに書かれていれば true"),
+    reason: z.string().describe("根拠になった記録、または根拠がない理由（一文）"),
+  })),
+});
+
+const ANSWER_SYSTEM = `${PRINCIPLES}
+
+# 仕事：若手の蔵人の質問に、過去の記録と判断メモだけを根拠に答える
+- 渡された「候補」（過去の判断メモと、その前後の経過簿、搾った時の数値）だけを使う。
+- 順に示す：①当時の判断（いつ・どのタンクで・何をしたか）②杜氏が話した理由 ③その後の経過（数値の変化と、上槽時の数値）。
+- 文は短く、1文に1つの事実。数値は記録のとおりに書く。
+- 口調だけを杜氏らしく（ややくだけた、落ち着いた話し言葉）。内容は記録にあることだけ。
+- 「こうすべき」という助言、一般論、記録にない推測は書かない。
+- 質問に答える判断メモが候補に無ければ found を false にし、sentences は空にする。`;
+
+const VERIFY_SYSTEM = `${PRINCIPLES}
+
+# 仕事：回答の照合役
+- 回答の一文ずつについて、渡された記録・判断メモに根拠があるかを判定する。
+- 数値・日付・タンク番号・操作・理由が記録と一致していれば supported を true。
+- 記録にない内容（推測、一般論、助言、記録と違う数値）が含まれていれば false。
+- 回答を書き足したり直したりしない。照合だけを行う。`;
+
+function candidatesText(candidates) {
+  return candidates.map((c, i) => {
+    const m = c.memo;
+    const recs = (c.records ?? []).map(r =>
+      `  ${r.date} 日順${r.moromi_day} 品温${r.temp ?? "-"} ボーメ${r.baume ?? "-"} 日本酒度${r.nihonshudo ?? "-"} アルコール${r.alcohol ?? "-"} 状ぼう${r.joubou ?? "-"} 操作:${r.operation ?? "-"} 備考:${r.note ?? "-"}`).join("\n");
+    const p = c.pressed;
+    return `## 候補${i + 1}：${m.season}年 ${m.tank}号（${c.kind ?? ""}）${m.date} 日順${m.moromi_day}
+変化：${m.change}
+杜氏への質問：${m.question}
+杜氏の答え（判断メモ）：${m.answer}
+前後の経過簿：
+${recs}
+上槽：${p ? `${p.date} 日順${p.moromi_day} 日本酒度${p.nihonshudo ?? "-"} アルコール${p.alcohol ?? "-"} 酸度${p.acidity ?? "-"}` : "記録なし"}`;
+  }).join("\n\n");
+}
+
+export default handler(async ({ question, candidates }) => {
+  if (!question?.trim()) throw new HttpError(400, "質問が空です");
+  if (!candidates?.length) {
+    return { found: false, answer: NOT_FOUND, sentences: [], removed: [], sources: [], draft: [] };
+  }
+  const evidence = candidatesText(candidates);
+
+  const draft = await askJson({
+    model: MODELS.precise,
+    system: ANSWER_SYSTEM,
+    effort: "medium",
+    content: `# 候補\n${evidence}\n\n# 若手の質問\n${question}`,
+    schema: Answer,
+  });
+  if (!draft.found || draft.sentences.length === 0) {
+    return { found: false, answer: NOT_FOUND, sentences: [], removed: [], sources: [], draft: [] };
+  }
+
+  const numbered = draft.sentences.map((s, i) => `${i}: ${s.text}`).join("\n");
+  const verdicts = await askJson({
+    model: MODELS.precise,
+    system: VERIFY_SYSTEM,
+    effort: "high",
+    content: `# 記録と判断メモ\n${evidence}\n\n# 照合する回答（番号: 文）\n${numbered}`,
+    schema: Verdicts,
+  });
+  const ok = new Map(verdicts.results.map(v => [v.index, v]));
+  // 照合の結果が無い文も、根拠がないものとして扱う
+  const kept = draft.sentences.filter((_, i) => ok.get(i)?.supported === true);
+  const removed = draft.sentences
+    .map((s, i) => ({ text: s.text, reason: ok.get(i)?.reason ?? "照合の結果がありません" }))
+    .filter((_, i) => ok.get(i)?.supported !== true);
+
+  if (kept.length === 0) {
+    return { found: false, answer: NOT_FOUND, sentences: [], removed, sources: [], draft: draft.sentences };
+  }
+  const seen = new Set();
+  const sources = kept.flatMap(s => s.sources).filter(s => {
+    const k = `${s.season}-${s.tank}-${s.date}`;
+    return seen.has(k) ? false : seen.add(k);
+  });
+  return { found: true, answer: kept.map(s => s.text).join(""), sentences: kept, removed, sources, draft: draft.sentences };
+});
+
+export const config = { path: "/api/young-question" };

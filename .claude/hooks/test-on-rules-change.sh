@@ -4,7 +4,7 @@ input=$(cat)
 file=$(printf '%s' "$input" | jq -r '.tool_input.file_path // ""')
 
 case "$file" in
-  */web/config/rules.json|*/web/src/detect.js) ;;
+  */web/public/config/rules.json|*/web/src/detect.js) ;;
   *) exit 0 ;;
 esac
 
