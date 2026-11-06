@@ -14,7 +14,7 @@ public class KuraPalette
     public Material tag, band, glow, glowSoft, lampShade, lampBulb, windowPaper;
     public Material tojiCloth, tojiSkin, tojiTowel;
     public Material text; // 文字（TextMesh）用。奥行きで隠れる
-    public Material beam, dust, steam; // 蔵の空気：高窓からの光の筋・舞うほこり・醪の湯気
+    public Material beam, dust, aroma, bubble; // 蔵の空気：高窓からの光の筋・舞うほこり・香りの粒・醪の泡
     // 酒蔵の現場らしさ：ホース・覆い（布とビニール）・手書きの札・黒板・床の水の跡・排水の溝・神棚
     public Material hose, cloth, vinyl, paperTag, blackboard, wet, grating, hinoki, sakaki, straw, shide;
 }
@@ -29,6 +29,7 @@ public static partial class KuraScene
     public const float DeckHeight = PlinthHeight + TankHeight; // 足場の踏み板の上面＝タンクの縁の高さ
     public const float EyeHeight = 1.55f; // 足場に立った人の目の高さ
     public const int TankCount = 10;
+    public static readonly Color AromaColor = new Color(1f, 0.8f, 0.42f, 0.75f); // 香りの粒：淡い金色
 
     // web/public/data/kura.json と同じ配置：2列×5本
     public static Vector3 TankPosition(int index)
@@ -218,36 +219,68 @@ public static partial class KuraScene
         var num = Text(t, "Number", id, 160, 0.036f, new Color(0.95f, 0.94f, 0.9f), p.text);
         num.transform.localPosition = new Vector3(0, baseY + TankHeight * 0.52f, -TankRadius - 0.012f);
 
-        // 醪の湯気（発酵の盛りほど少し多く。量は KuraBridge が activity で変える）
-        if (p.steam != null)
+        // 香りの粒（演出）：醪は10℃前後で湯気は立たない。杜氏が香りで発酵を見るので、目に見えない香りを
+        // 液面から立ち上る淡い金色の小さな光の粒で見せる。量と勢いは KuraBridge が activity（発酵の盛り）で変える
+        if (p.aroma != null)
         {
-            var steam = new GameObject("Steam");
-            steam.transform.SetParent(t, false);
-            steam.transform.localPosition = new Vector3(0, baseY + TankHeight * 0.7f, 0);
-            steam.transform.localRotation = Quaternion.Euler(-90f, 0, 0); // 上向きに出す
-            var ps = steam.AddComponent<ParticleSystem>();
+            var aroma = new GameObject("Aroma");
+            aroma.transform.SetParent(t, false);
+            aroma.transform.localPosition = new Vector3(0, baseY + TankHeight * 0.7f, 0);
+            aroma.transform.localRotation = Quaternion.Euler(-90f, 0, 0); // 上向きに出す
+            var ps = aroma.AddComponent<ParticleSystem>();
             ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var main = ps.main;
             main.loop = true; main.playOnAwake = true; main.duration = 5f;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(4f, 6.5f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.25f, 0.45f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.6f, 1.1f);
-            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
-            main.startColor = new Color(1f, 1f, 1f, 0.13f);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(3.5f, 5f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.3f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.1f);
+            main.startColor = AromaColor;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 40;
+            main.maxParticles = 120;
             var em = ps.emission; em.rateOverTime = 0f;
-            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 6f; sh.radius = TankRadius * 0.7f; // 液面から真上へ
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 4f; sh.radius = (TankRadius - WallThickness) * 0.8f; sh.radiusThickness = 1f; // 液面の円から真上へ
             var fade = ps.colorOverLifetime; fade.enabled = true;
             var g = new Gradient();
             g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.25f), new GradientAlphaKey(0.6f, 0.6f), new GradientAlphaKey(0f, 1f) });
+                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0.8f, 0.7f), new GradientAlphaKey(0f, 1f) });
             fade.color = g;
-            var size = ps.sizeOverLifetime; size.enabled = true; size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.8f));
-            var noise = ps.noise; noise.enabled = true; noise.strength = 0.15f; noise.frequency = 0.3f; noise.scrollSpeed = 0.1f;
-            var r = steam.GetComponent<ParticleSystemRenderer>();
-            r.sharedMaterial = p.steam; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            var size = ps.sizeOverLifetime; size.enabled = true; size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.7f, 1f, 1f));
+            var noise = ps.noise; noise.enabled = true; noise.strength = 0.08f; noise.frequency = 0.6f; noise.scrollSpeed = 0.15f;
+            var r = aroma.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = p.aroma; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
             r.sortingFudge = 10f;
+        }
+
+        // 醪の表面の小さな泡：浮かんでふくらみ、弾けて消える（液面に寝かせて描く）
+        if (p.bubble != null)
+        {
+            var bub = new GameObject("Bubbles");
+            bub.transform.SetParent(t, false);
+            bub.transform.localPosition = new Vector3(0, baseY + TankHeight * 0.7f, 0);
+            bub.transform.localRotation = Quaternion.Euler(-90f, 0, 0);
+            var ps = bub.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.loop = true; main.playOnAwake = true; main.duration = 5f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.8f, 2.2f);
+            main.startSpeed = 0f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.09f);
+            main.startColor = new Color(1f, 0.99f, 0.95f, 0.9f);
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.maxParticles = 60;
+            var em = ps.emission; em.rateOverTime = 0f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = (TankRadius - WallThickness) * 0.9f; sh.radiusThickness = 1f;
+            // ゆっくりふくらみ、最後に少し大きくなって消える（弾ける）
+            var size = ps.sizeOverLifetime; size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0f, 0.2f), new Keyframe(0.75f, 1f), new Keyframe(0.9f, 1.25f), new Keyframe(1f, 0.1f)));
+            var fade = ps.colorOverLifetime; fade.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(1f, 0.85f), new GradientAlphaKey(0f, 1f) });
+            fade.color = g;
+            var r = bub.GetComponent<ParticleSystemRenderer>();
+            r.renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            r.sharedMaterial = p.bubble; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
         }
 
         // 変化があったときに控えめに光る縁と足元（ふだんは消しておく）

@@ -46,9 +46,9 @@ export function tankStateOn(tank, date, capacityL) {
   };
 }
 
-// 3Dの湯気の量（0〜1）：状ぼうから見た発酵の盛り具合。醸造の判断ではなく、見た目の演出のためだけに使う。
-// 仕込み前（留添の前）・上槽の日・上槽の3日前からは出さない
-const JOUBOU_ACTIVITY = { 筋泡: 0.35, 水泡: 0.55, 岩泡: 0.8, 高泡: 1.0, 落泡: 0.7, 玉泡: 0.5, 地: 0.3 };
+// 3Dの「香りの粒」と表面の泡の量（0〜1）：状ぼうから見た発酵の盛り具合。醸造の判断ではなく、見た目の演出のためだけに使う。
+// 高泡〜落泡の頃がいちばん多い。仕込み前（留添の前）・上槽の日・上槽の3日前からは出さない（空のタンクは覆いがかかり 0）
+const JOUBOU_ACTIVITY = { 筋泡: 0.3, 水泡: 0.5, 岩泡: 0.75, 高泡: 1.0, 落泡: 0.95, 玉泡: 0.5, 地: 0.25 };
 const DAY_MS = 86400000;
 export function fermentActivity(tank, last, stage, date) {
   if (stage !== "moromi" || last.moromi_day == null || last.moromi_day < 1) return 0;

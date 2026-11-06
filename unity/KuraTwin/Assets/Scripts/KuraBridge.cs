@@ -42,9 +42,11 @@ public partial class KuraBridge : MonoBehaviour
         public Color targetBand = BandNeutral, bandColor = BandNeutral;
         public bool highlighted, selected;
         public float glow; // 0〜1（ふわっと点く）
-        public ParticleSystem steam;
+        public ParticleSystem aroma, bubbles; // 香りの粒・醪の表面の泡
+        public Renderer liquidRenderer;
+        public float phase; // 表面の動きをタンクごとにずらす
         public GameObject cover; // 空のタンクにかける覆い
-        public float targetActivity, activity; // 湯気の量（0〜1）
+        public float targetActivity, activity; // 発酵の盛り（0〜1）：香りの粒と泡の量
     }
 
     readonly Dictionary<string, Tank> tanks = new Dictionary<string, Tank>();
@@ -124,6 +126,8 @@ public partial class KuraBridge : MonoBehaviour
     static readonly Color GlowAlert = new Color(1.0f, 0.42f, 0.1f);    // 変化あり：灯りの色
     static readonly Color GlowSelect = new Color(0.95f, 0.88f, 0.70f); // 選択：やわらかい白
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    static readonly int BaseMapStId = Shader.PropertyToID("_BaseMap_ST");
+    static readonly Color AromaPastColor = new Color(0.95f, 0.93f, 0.86f, 0.75f); // 昨季：朝の光に合わせて白っぽく
     static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
 
     void Awake()
@@ -164,7 +168,10 @@ public partial class KuraBridge : MonoBehaviour
                 floorGlow = r.Find("FloorGlow").GetComponent<Renderer>(),
                 tag = r.Find("Tag").gameObject,
                 tagText = r.Find("Tag/TagText").GetComponent<TextMesh>(),
-                steam = r.Find("Steam")?.GetComponent<ParticleSystem>(),
+                aroma = r.Find("Aroma")?.GetComponent<ParticleSystem>(),
+                bubbles = r.Find("Bubbles")?.GetComponent<ParticleSystem>(),
+                liquidRenderer = r.Find("Liquid")?.GetComponent<Renderer>(),
+                phase = i * 1.7f,
                 cover = r.Find("Cover")?.gameObject,
             };
             t.tag.SetActive(false);
@@ -694,14 +701,32 @@ public partial class KuraBridge : MonoBehaviour
                 t.glow = Mathf.Lerp(t.glow, (t.highlighted || t.selected) ? 1f : 0f, k);
             }
             if (t.liquid != null) KuraScene.SetLiquid(t.liquid, t.level);
-            // 湯気：液面の少し上から、発酵の盛りほど少し多く（ごく薄く）
-            if (t.steam != null)
+            // 香りの粒と表面の泡：発酵の盛りほど多く、勢いよく。覆いのタンク（空）や仕込み前・上槽間近は activity が 0 で出ない
+            t.activity = k > 0f ? Mathf.Lerp(t.activity, t.targetActivity, k) : t.targetActivity;
+            float surfaceY = KuraScene.PlinthHeight + KuraScene.TankHeight * Mathf.Max(0.05f, t.level) * 0.96f;
+            if (t.targetLevel <= 0.001f) t.activity = 0f; // 覆いをかけたら、液面が下がりきるのを待たずにすぐ止める
+            float act = t.level > 0.001f ? t.activity : 0f;
+            if (t.aroma != null)
             {
-                t.activity = k > 0f ? Mathf.Lerp(t.activity, t.targetActivity, k) : t.targetActivity;
-                var em = t.steam.emission; em.rateOverTime = t.activity * 5f;
-                var sp = t.steam.transform.localPosition;
-                sp.y = KuraScene.PlinthHeight + KuraScene.TankHeight * Mathf.Max(0.05f, t.level) * 0.96f + 0.05f;
-                t.steam.transform.localPosition = sp;
+                var em = t.aroma.emission; em.rateOverTime = Mathf.Pow(act, 1.5f) * 13f;
+                var main = t.aroma.main;
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.1f + 0.12f * act, 0.16f + 0.2f * act);
+                main.startColor = Color.Lerp(KuraScene.AromaColor, AromaPastColor, pastE); // 昨季（朝の光）は少し白っぽく
+                var sp = t.aroma.transform.localPosition; sp.y = surfaceY + 0.03f; t.aroma.transform.localPosition = sp;
+            }
+            if (t.bubbles != null)
+            {
+                var em = t.bubbles.emission; em.rateOverTime = act * 16f;
+                var sp = t.bubbles.transform.localPosition; sp.y = surfaceY + 0.012f; t.bubbles.transform.localPosition = sp;
+            }
+            // 表面がゆっくりわずかに動く（模様をごく少しずつ流す）
+            if (t.liquidRenderer != null)
+            {
+                float tt = Time.time * 0.05f + t.phase;
+                float amp = 0.015f + 0.03f * act;
+                mpb.Clear();
+                mpb.SetVector(BaseMapStId, new Vector4(1.5f, 1.5f, amp * Mathf.Sin(tt) + 0.004f * act * Time.time, amp * Mathf.Cos(tt * 0.8f)));
+                t.liquidRenderer.SetPropertyBlock(mpb);
             }
 
             mpb.Clear();

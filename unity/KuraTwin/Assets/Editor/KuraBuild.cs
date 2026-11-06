@@ -339,6 +339,19 @@ public static class KuraBuild
         return new Color(1f, 1f, 1f, a);
     });
 
+    static Material Tinted(Material m, Color c) { m.SetColor("_BaseColor", c); EditorUtility.SetDirty(m); return m; }
+
+    // 醪の泡：白い薄い輪と小さなつや
+    static Texture2D BubbleTex() => SaveTex("Bubble", 64, (u, v) =>
+    {
+        float d = Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 0.5f)) * 2f;
+        float ring = Smooth(0.55f, 0.8f, d) * (1f - Smooth(0.85f, 1f, d));
+        float fill = (1f - Smooth(0.5f, 0.85f, d)) * 0.18f;
+        float hi = 1f - Smooth(0f, 0.18f, Vector2.Distance(new Vector2(u, v), new Vector2(0.36f, 0.64f)) * 2f);
+        float a = Mathf.Clamp01(ring * 0.75f + fill + hi * 0.8f);
+        return new Color(1f, 1f, 1f, a);
+    });
+
     // 空気の演出の材質：光の筋（Unlit・加算・両面）、ほこり（粒子・加算）、湯気（粒子・半透明）
     static Material AirMat(string name, Texture2D tex, bool additive, bool particles)
     {
@@ -450,7 +463,8 @@ public static class KuraBuild
             shide = Lit("Shide", new Color(0.98f, 0.98f, 0.96f), 0.1f),
             beam = AirMat("LightBeam", SaveTex("BeamGrad", 64, (u, v) => { float a = Mathf.Pow(Mathf.Sin(Mathf.PI * u), 1.6f) * Smooth(0f, 0.08f, v) * Mathf.Pow(1f - v, 1.4f); return new Color(a, a, a, a); }), additive: true, particles: true), // 粒子用のシェーダーで描く（Unlit の半透明は描かれなかった）
             dust = AirMat("Dust", SoftDot(), additive: true, particles: true),
-            steam = AirMat("Steam", SoftDot(), additive: false, particles: true),
+            aroma = Tinted(AirMat("Aroma", SoftDot(), additive: true, particles: true), new Color(2.2f, 1.9f, 1.4f)), // 加算で少し強く光らせる（色は粒の金色）
+            bubble = AirMat("Bubble", BubbleTex(), additive: false, particles: true),
         };
     }
 
