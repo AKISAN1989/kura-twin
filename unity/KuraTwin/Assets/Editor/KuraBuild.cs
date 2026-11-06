@@ -225,6 +225,18 @@ public static class KuraBuild
         return m;
     }
 
+    static Material TextMat()
+    {
+        string path = $"{MatDir}/Text3D.mat";
+        var shader = Shader.Find("Kura/Text3D");
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, path); }
+        m.shader = shader;
+        m.mainTexture = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf").material.mainTexture;
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
     static KuraPalette MakePalette()
     {
         const int S = 512;
@@ -269,9 +281,10 @@ public static class KuraBuild
             lampShade = Lit("LampShade", new Color(0.18f, 0.24f, 0.2f), 0.6f, 0.2f),
             lampBulb = Emissive("LampBulb", Color.white, new Color(1f, 0.82f, 0.6f) * 6f, false),
             windowPaper = Emissive("WindowPaper", new Color(0.95f, 0.93f, 0.88f), new Color(1f, 0.93f, 0.82f) * 1.6f, true),
-            tojiCloth = Lit("TojiCloth", new Color(0.13f, 0.17f, 0.28f), 0.1f),
-            tojiSkin = Lit("TojiSkin", new Color(0.82f, 0.66f, 0.54f), 0.25f),
+            tojiCloth = Lit("TojiCloth", new Color(0.72f, 0.7f, 0.66f), 0.1f), // 仮の杜氏は淡い灰色（目立たせない）
+            tojiSkin = Lit("TojiSkin", new Color(0.74f, 0.72f, 0.68f), 0.1f),
             tojiTowel = Lit("TojiTowel", new Color(0.95f, 0.95f, 0.93f), 0.1f),
+            text = TextMat(),
         };
     }
 
@@ -356,8 +369,8 @@ public static class KuraBuild
 
         // 反射（琺瑯のつや用）と、動く物（醪）のための光のサンプル点
         var probe = new GameObject("ReflectionProbe").AddComponent<ReflectionProbe>();
-        probe.transform.position = new Vector3(0, 3.2f, -1f);
-        probe.size = new Vector3(24f, 7.6f, 25f);
+        probe.transform.position = new Vector3(0, 4.2f, -1f);
+        probe.size = new Vector3(24f, 9.6f, 27f);
         probe.center = new Vector3(0, 0.6f, -2.5f);
         probe.boxProjection = true;
         probe.mode = ReflectionProbeMode.Baked;
@@ -367,7 +380,7 @@ public static class KuraBuild
         var pts = new System.Collections.Generic.List<Vector3>();
         for (float x = -10f; x <= 10.01f; x += 2.5f)
             for (float z = -12f; z <= 8.01f; z += 2.5f)
-                foreach (var y in new[] { 0.6f, 2.2f, 3.4f, 6f })
+                foreach (var y in new[] { 0.6f, 2.2f, 3.6f, 5f, 7.5f })
                     pts.Add(new Vector3(x, y, z));
         lpg.probePositions = pts.ToArray();
 
@@ -436,6 +449,7 @@ public static class KuraBuild
     // ================= 確認用の撮影（エディタで描いて PNG に保存） =================
     public static void Snapshot()
     {
+        EditorSettings.asyncShaderCompilation = false; // 1枚目がシェーダーの準備前の仮の色で撮れないように
         var scene = EditorSceneManager.OpenScene(ScenePath);
         var bridge = UnityEngine.Object.FindFirstObjectByType<KuraBridge>();
         bridge.Init();
@@ -450,10 +464,16 @@ public static class KuraBuild
 
         string tag = Environment.GetEnvironmentVariable("KURA_SHOT") ?? "wip";
         Directory.CreateDirectory(ShotDir);
-        bridge.PreviewCamera("overview", null);
-        bridge.ApplyInstant();
-        Shoot($"{tag}-overview");
+        // 横長（動画）とブラウザの左側（やや縦長）の2通りで全体を撮る
+        foreach (var (w, h, suffix) in new[] { (1600, 900, "overview"), (1020, 860, "overview-web") })
+        {
+            Camera.main.aspect = (float)w / h;
+            bridge.PreviewCamera("overview", null);
+            bridge.ApplyInstant();
+            Shoot($"{tag}-{suffix}", w, h);
+        }
         bridge.SelectTank("6");
+        Camera.main.aspect = 1600f / 900f;
         bridge.PreviewCamera("toji", "6");
         bridge.ApplyInstant();
         Shoot($"{tag}-toji");
@@ -463,6 +483,7 @@ public static class KuraBuild
     {
         var cam = Camera.main;
         cam.aspect = (float)w / h;
+        Debug.Log($"[Kura] カメラ {name}: 位置 {cam.transform.position} 向き {cam.transform.forward} 画角 {cam.fieldOfView}");
         var rt = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB) { antiAliasing = 4 };
         var req = new RenderPipeline.StandardRequest { destination = rt };
         if (RenderPipeline.SupportsRenderRequest(cam, req)) RenderPipeline.SubmitRenderRequest(cam, req);
@@ -480,8 +501,10 @@ public static class KuraBuild
     [MenuItem("Kura/2. WebGLで書き出してWebに置く")]
     public static void BuildWebGL()
     {
-        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
-        PlayerSettings.WebGL.decompressionFallback = false;
+        // Brotli で圧縮（約44MB → 約10MB）。配信側が Content-Encoding を付けなくても読めるよう、ブラウザ側で解凍する仕組みも入れる
+        // （Netlify では netlify.toml でヘッダーを付け、ブラウザ自身に解凍させる）
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+        PlayerSettings.WebGL.decompressionFallback = true;
         PlayerSettings.WebGL.dataCaching = false;
         PlayerSettings.companyName = "KuraTwin";
         PlayerSettings.productName = "KuraTwin";

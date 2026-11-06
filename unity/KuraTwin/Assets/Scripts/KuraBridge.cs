@@ -74,8 +74,13 @@ public class KuraBridge : MonoBehaviour
         if (ready) return;
         mpb = new MaterialPropertyBlock();
         cam = Camera.main;
-        // TextMesh（番号・温度の札）が物の向こうに透けないように、奥行きで隠れるようにする
-        Shader.SetGlobalFloat("unity_GUIZTestMode", (float)UnityEngine.Rendering.CompareFunction.LessEqual);
+        // TextMesh（番号・温度の札）は、奥行きで隠れる文字の材質で描く。文字の画像（動的フォント）は作り直されることがあるので追いかける
+        var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (palette.text != null)
+        {
+            palette.text.mainTexture = font.material.mainTexture;
+            Font.textureRebuilt += f => { if (f == font) palette.text.mainTexture = f.material.mainTexture; };
+        }
         var kura = transform.Find("Kura") ?? KuraScene.Build(transform, palette, null, null);
         tanks.Clear();
         for (int i = 0; i < KuraScene.TankCount; i++)
@@ -153,26 +158,36 @@ public class KuraBridge : MonoBehaviour
 
     bool overview = true;
 
+    float targetFov = 40f;
+
     void SetOverview()
     {
         overview = true;
-        // 前の大戸口のあたりから、液面が見える角度（約34°）で見下ろす。画面の縦横比に合わせて10本が入る距離まで引く
+        targetFov = 40f;
+        // 蔵の前から見下ろす。横は10本＋足場が入る距離まで引き、縦は手前の床が画面の下端ぎりぎりに来るように置く
+        // （縦長の画面でも手前の空いた床が間延びしない）
         float aspect = cam != null ? cam.aspect : 1.6f;
-        float vfov = (cam != null ? cam.fieldOfView : 45f) * Mathf.Deg2Rad;
+        float vfov = (cam != null ? cam.fieldOfView : 40f) * Mathf.Deg2Rad;
         float hfov = 2f * Mathf.Atan(Mathf.Tan(vfov / 2f) * aspect);
-        float d = Mathf.Max(12f, 10.2f / Mathf.Tan(hfov / 2f));
-        float pitch = Mathf.Lerp(38f, 32f, Mathf.InverseLerp(1.1f, 1.8f, aspect)) * Mathf.Deg2Rad; // 縦長の画面ほど上から
-        camLookAt = new Vector3(-0.6f, 1.2f, 0.3f);
-        camTargetPos = camLookAt + new Vector3(0.5f, Mathf.Sin(pitch) * d, -Mathf.Cos(pitch) * d);
+        float pitch = Mathf.Lerp(47f, 36f, Mathf.InverseLerp(1.1f, 1.9f, aspect)) * Mathf.Deg2Rad; // 縦長ほど上から
+        float axial = Mathf.Max(11f, 8.6f / Mathf.Tan(hfov / 2f)); // 手前の列までの、視線方向の距離
+        float bottomRay = pitch + vfov / 2f * 0.86f;               // 画面の下端より少し内側を通る視線
+        var floorFront = new Vector3(-0.3f, 0f, -3.5f);            // 手前の列のすぐ前の床
+        float t = axial / Mathf.Cos(bottomRay - pitch);
+        camTargetPos = floorFront + new Vector3(0, Mathf.Sin(bottomRay), -Mathf.Cos(bottomRay)) * t;
+        camLookAt = camTargetPos + new Vector3(0, -Mathf.Sin(pitch), Mathf.Cos(pitch)) * 12f;
     }
 
     void SetTojiView(Tank t)
     {
         overview = false;
-        // 足場から縁越しに覗き込む位置
+        targetFov = 52f;
+        // 足場（2列の間の通路）に立った人が、縁越しに覗き込む目の位置
         var p = t.root.position;
-        camTargetPos = p + new Vector3(0.4f, KuraScene.TankHeight + 2.3f, -2.4f);
-        camLookAt = p + new Vector3(0, 0.1f + KuraScene.TankHeight * Mathf.Max(0.25f, t.level) * 0.96f, 0.15f);
+        float toward = p.z < 0 ? 1f : -1f; // タンクから足場へ向かう向き
+        camTargetPos = new Vector3(p.x + 0.5f, KuraScene.DeckHeight + KuraScene.EyeHeight, p.z + toward * 1.55f); // 足場の端（縁の手前）に立つ
+        float liquidY = KuraScene.PlinthHeight + KuraScene.TankHeight * Mathf.Max(0.3f, t.level) * 0.96f;
+        camLookAt = new Vector3(p.x, liquidY, p.z - toward * 0.35f);
     }
 
     /// <summary>エディタでの確認用：補間せずに今の状態をそのまま見せる</summary>
@@ -180,7 +195,7 @@ public class KuraBridge : MonoBehaviour
     {
         foreach (var t in tanks.Values) { t.level = t.targetLevel; t.bandColor = t.targetBand; t.glow = (t.highlighted || t.selected) ? 1f : 0f; }
         UpdateTanks(0f, pulse);
-        if (cam != null) { cam.transform.position = camTargetPos; camLookAtCurrent = camLookAt; cam.transform.LookAt(camLookAt); }
+        if (cam != null) { cam.fieldOfView = targetFov; cam.transform.position = camTargetPos; camLookAtCurrent = camLookAt; cam.transform.LookAt(camLookAt); }
     }
 
     public void PreviewCamera(string mode, string id)
@@ -233,6 +248,7 @@ public class KuraBridge : MonoBehaviour
         if (cam != null)
         {
             if (overview) SetOverview(); // 画面の大きさが変わっても全体が入るように
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, targetFov, k);
             cam.transform.position = Vector3.Lerp(cam.transform.position, camTargetPos, k);
             camLookAtCurrent = Vector3.Lerp(camLookAtCurrent, camLookAt, k);
             cam.transform.LookAt(camLookAtCurrent);

@@ -12,14 +12,18 @@ public class KuraPalette
     public Material plaster, wood, woodDark, concrete, steel, plank;
     public Material tag, band, glow, glowSoft, lampShade, lampBulb, windowPaper;
     public Material tojiCloth, tojiSkin, tojiTowel;
+    public Material text; // 文字（TextMesh）用。奥行きで隠れる
 }
 
 public static class KuraScene
 {
     public const float TankRadius = 1.0f;
-    public const float TankHeight = 2.5f;
+    // 実際の仕込みタンクに近い大きさ：直径2m・高さ3m（人の背丈よりずっと高い）。蔵人は縁と同じ高さの足場から作業する
+    public const float TankHeight = 3.0f;
     public const float WallThickness = 0.04f;
-    public const float DeckHeight = 1.5f;
+    public const float PlinthHeight = 0.1f;
+    public const float DeckHeight = PlinthHeight + TankHeight; // 足場の踏み板の上面＝タンクの縁の高さ
+    public const float EyeHeight = 1.55f; // 足場に立った人の目の高さ
     public const int TankCount = 10;
 
     // web/public/data/kura.json と同じ配置：2列×5本
@@ -68,7 +72,7 @@ public static class KuraScene
     {
         var b = new GameObject("Building").transform;
         b.SetParent(kura, false);
-        const float W = 12f, Back = 9f, Front = -24f, H = 7.5f;
+        const float W = 12f, Back = 9f, Front = -26f, H = 9.5f;
         float depth = Back - Front, midZ = (Back + Front) / 2f;
 
         markStatic(Box(b, "Floor", new Vector3(0, -0.05f, midZ), new Vector3(W * 2, 0.1f, depth), p.concrete));
@@ -80,9 +84,9 @@ public static class KuraScene
         markStatic(Box(b, "WainscotLeft", new Vector3(-W + 0.02f, 0.55f, midZ), new Vector3(0.06f, 1.1f, depth), p.woodDark));
         markStatic(Box(b, "WainscotRight", new Vector3(W - 0.02f, 0.55f, midZ), new Vector3(0.06f, 1.1f, depth), p.woodDark));
         // 長押（壁の中ほどの横木）
-        markStatic(Box(b, "NageshiBack", new Vector3(0, 3.2f, Back - 0.04f), new Vector3(W * 2, 0.16f, 0.1f), p.wood));
-        markStatic(Box(b, "NageshiLeft", new Vector3(-W + 0.04f, 3.2f, midZ), new Vector3(0.1f, 0.16f, depth), p.wood));
-        markStatic(Box(b, "NageshiRight", new Vector3(W - 0.04f, 3.2f, midZ), new Vector3(0.1f, 0.16f, depth), p.wood));
+        markStatic(Box(b, "NageshiBack", new Vector3(0, 4.2f, Back - 0.04f), new Vector3(W * 2, 0.16f, 0.1f), p.wood));
+        markStatic(Box(b, "NageshiLeft", new Vector3(-W + 0.04f, 4.2f, midZ), new Vector3(0.1f, 0.16f, depth), p.wood));
+        markStatic(Box(b, "NageshiRight", new Vector3(W - 0.04f, 4.2f, midZ), new Vector3(0.1f, 0.16f, depth), p.wood));
         // 柱
         for (float x = -W; x <= W + 0.01f; x += 4f)
             markStatic(Box(b, "PillarBack", new Vector3(x, H / 2, Back - 0.05f), new Vector3(0.32f, H, 0.32f), p.wood));
@@ -93,18 +97,18 @@ public static class KuraScene
         }
         // 梁（太い木）と桁。全体を見渡すカメラの視線をふさがないよう、タンクより奥にだけ渡す。天井は暗がりのまま
         foreach (var z in new[] { 7.2f, 3.6f, 0f })
-            markStatic(Box(b, "Beam", new Vector3(0, 6.6f, z), new Vector3(W * 2, 0.55f, 0.4f), p.wood));
-        markStatic(Box(b, "GirderLeft", new Vector3(-W + 0.25f, 7.0f, midZ), new Vector3(0.4f, 0.45f, depth), p.wood));
-        markStatic(Box(b, "GirderRight", new Vector3(W - 0.25f, 7.0f, midZ), new Vector3(0.4f, 0.45f, depth), p.wood));
+            markStatic(Box(b, "Beam", new Vector3(0, 8.3f, z), new Vector3(W * 2, 0.6f, 0.42f), p.wood));
+        markStatic(Box(b, "GirderLeft", new Vector3(-W + 0.25f, 8.8f, midZ), new Vector3(0.4f, 0.45f, depth), p.wood));
+        markStatic(Box(b, "GirderRight", new Vector3(W - 0.25f, 8.8f, midZ), new Vector3(0.4f, 0.45f, depth), p.wood));
         // 高窓（障子紙が外の光で明るい）
         for (int i = -1; i <= 1; i++)
         {
             float x = i * 7f;
-            markStatic(Box(b, "Window", new Vector3(x, 5.1f, Back - 0.03f), new Vector3(2.4f, 1.1f, 0.04f), p.windowPaper));
-            markStatic(Box(b, "WindowFrameT", new Vector3(x, 5.68f, Back - 0.07f), new Vector3(2.6f, 0.08f, 0.08f), p.wood));
-            markStatic(Box(b, "WindowFrameB", new Vector3(x, 4.52f, Back - 0.07f), new Vector3(2.6f, 0.08f, 0.08f), p.wood));
+            markStatic(Box(b, "Window", new Vector3(x, 6.6f, Back - 0.03f), new Vector3(2.4f, 1.1f, 0.04f), p.windowPaper));
+            markStatic(Box(b, "WindowFrameT", new Vector3(x, 7.18f, Back - 0.07f), new Vector3(2.6f, 0.08f, 0.08f), p.wood));
+            markStatic(Box(b, "WindowFrameB", new Vector3(x, 6.02f, Back - 0.07f), new Vector3(2.6f, 0.08f, 0.08f), p.wood));
             for (int k = 0; k <= 4; k++)
-                markStatic(Box(b, "WindowBar", new Vector3(x - 1.2f + k * 0.6f, 5.1f, Back - 0.07f), new Vector3(0.05f, 1.1f, 0.05f), p.wood));
+                markStatic(Box(b, "WindowBar", new Vector3(x - 1.2f + k * 0.6f, 6.6f, Back - 0.07f), new Vector3(0.05f, 1.1f, 0.05f), p.wood));
         }
     }
 
@@ -148,9 +152,9 @@ public static class KuraScene
         // はしご（左端。床から足場へ斜めに）
         var ladder = new GameObject("Ladder").transform;
         ladder.SetParent(s, false);
-        ladder.localPosition = new Vector3(x0 - 0.55f, 0, 0);
-        ladder.localRotation = Quaternion.Euler(0, 0, -20f);
-        float lh = y / Mathf.Cos(20f * Mathf.Deg2Rad) + 0.9f;
+        ladder.localPosition = new Vector3(x0 - 0.8f, 0, 0);
+        ladder.localRotation = Quaternion.Euler(0, 0, -15f);
+        float lh = y / Mathf.Cos(15f * Mathf.Deg2Rad) + 0.9f;
         foreach (var z in new[] { -0.26f, 0.26f })
             markStatic(Box(ladder, "Stile", new Vector3(0, lh / 2f, z), new Vector3(0.05f, lh, 0.07f), p.steel));
         for (float h = 0.28f; h < lh - 0.2f; h += 0.28f)
@@ -167,7 +171,7 @@ public static class KuraScene
 
         var plinth = MeshObj(t, "Plinth", m["plinth"], p.plinth, Vector3.zero);
         markStatic(plinth);
-        float baseY = 0.1f;
+        float baseY = PlinthHeight;
 
         var shell = MeshObj(t, "Shell", m["shellOuter"], p.enamel, new Vector3(0, baseY, 0));
         markStatic(shell);
@@ -199,12 +203,12 @@ public static class KuraScene
         tag.localRotation = Quaternion.LookRotation(new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)));
         Box(tag, "Board", Vector3.zero, new Vector3(0.36f, 0.19f, 0.018f), p.tag).transform.localRotation = Quaternion.identity;
         Box(tag, "Nail", new Vector3(0, 0.07f, 0.012f), new Vector3(0.02f, 0.02f, 0.01f), p.steel);
-        var tt = Text(tag, "TagText", "", 120, 0.013f, new Color(0.12f, 0.1f, 0.08f));
+        var tt = Text(tag, "TagText", "", 120, 0.013f, new Color(0.12f, 0.1f, 0.08f), p.text);
         tt.transform.localPosition = new Vector3(0, -0.01f, 0.012f);
         tt.transform.localRotation = Quaternion.Euler(0, 180f, 0);
 
         // 番号（胴に描いた字）
-        var num = Text(t, "Number", id, 160, 0.026f, new Color(0.42f, 0.11f, 0.08f));
+        var num = Text(t, "Number", id, 160, 0.026f, new Color(0.42f, 0.11f, 0.08f), p.text);
         num.transform.localPosition = new Vector3(0, baseY + TankHeight * 0.52f, -TankRadius - 0.012f);
 
         // 変化があったときに控えめに光る縁と足元（ふだんは消しておく）
@@ -219,7 +223,7 @@ public static class KuraScene
         float h = Mathf.Max(0.002f, level * TankHeight * 0.96f);
         liquid.gameObject.SetActive(level > 0.001f);
         float r = (TankRadius - WallThickness) * 2f * 0.995f;
-        liquid.localPosition = new Vector3(0, 0.1f + h / 2f, 0);
+        liquid.localPosition = new Vector3(0, PlinthHeight + h / 2f, 0);
         liquid.localScale = new Vector3(r, h / 2f, r); // Cylinder は高さ2
     }
 
@@ -233,8 +237,8 @@ public static class KuraScene
         {
             var lamp = new GameObject("Lamp").transform;
             lamp.SetParent(l, false);
-            lamp.localPosition = new Vector3(x, 5.5f, 0f);
-            markStatic(Box(lamp, "Cord", new Vector3(0, 0.42f, 0), new Vector3(0.015f, 0.84f, 0.015f), p.steel));
+            lamp.localPosition = new Vector3(x, 6.9f, 0f);
+            markStatic(Box(lamp, "Cord", new Vector3(0, 0.55f, 0), new Vector3(0.015f, 1.1f, 0.015f), p.steel));
             markStatic(MeshObj(lamp, "Shade", m["shade"], p.lampShade, Vector3.zero));
             var bulb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             bulb.name = "Bulb";
@@ -250,14 +254,14 @@ public static class KuraScene
     // ---------- 杜氏の仮キャラ（Tripo のモデルに差し替える予定） ----------
     static void BuildToji(Transform kura, KuraPalette p)
     {
+        // 仮の杜氏：Tripo のモデルに差し替えるまで、足場の左端に立つ淡い色の人形にして目立たせない。吹き出しの位置（Head）だけ使う
         var toji = new GameObject("Toji").transform;
         toji.SetParent(kura, false);
-        toji.localPosition = new Vector3(-8.6f, 0, -3.6f);
-        toji.localRotation = Quaternion.Euler(0, 55, 0);
-        var body = Prim(toji, PrimitiveType.Capsule, "Body", new Vector3(0, 0.85f, 0), new Vector3(0.55f, 0.85f, 0.42f), p.tojiCloth);
-        Prim(toji, PrimitiveType.Sphere, "Head", new Vector3(0, 1.88f, 0), Vector3.one * 0.34f, p.tojiSkin);
-        Prim(toji, PrimitiveType.Cylinder, "Hachimaki", new Vector3(0, 1.95f, 0), new Vector3(0.36f, 0.035f, 0.36f), p.tojiTowel);
+        toji.localPosition = new Vector3(-7.4f, DeckHeight, 0.1f);
+        toji.localRotation = Quaternion.Euler(0, 150, 0);
+        var body = Prim(toji, PrimitiveType.Capsule, "Body", new Vector3(0, 0.72f, 0), new Vector3(0.4f, 0.72f, 0.3f), p.tojiCloth);
         UnityEngine.Object.DestroyImmediate(body.GetComponent<Collider>());
+        Prim(toji, PrimitiveType.Sphere, "Head", new Vector3(0, 1.56f, 0), Vector3.one * 0.24f, p.tojiSkin);
     }
 
     // ---------- 部品 ----------
@@ -295,7 +299,7 @@ public static class KuraScene
         return g;
     }
 
-    static TextMesh Text(Transform parent, string name, string text, int size, float charSize, Color color)
+    static TextMesh Text(Transform parent, string name, string text, int size, float charSize, Color color, Material mat)
     {
         var g = new GameObject(name);
         g.transform.SetParent(parent, false);
@@ -304,7 +308,7 @@ public static class KuraScene
         tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center;
         tm.color = color;
         tm.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        g.GetComponent<MeshRenderer>().sharedMaterial = tm.font.material;
+        g.GetComponent<MeshRenderer>().sharedMaterial = mat != null ? mat : tm.font.material;
         return tm;
     }
 

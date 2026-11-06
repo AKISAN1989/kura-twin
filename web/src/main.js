@@ -28,9 +28,10 @@ async function startUnity() {
   }
   try {
     const instance = await window.createUnityInstance($("unity-canvas"), {
-      dataUrl: `${base}.data`,
-      frameworkUrl: `${base}.framework.js`,
-      codeUrl: `${base}.wasm`,
+      // Brotli で圧縮した3D（.unityweb）。配信側が解凍しない場合は Unity の読み込み部が自分で解凍する
+      dataUrl: `${base}.data.unityweb`,
+      frameworkUrl: `${base}.framework.js.unityweb`,
+      codeUrl: `${base}.wasm.unityweb`,
       // ?capture=1 のときだけ、3Dの画面を画像として取り出せるようにする（README・動画の素材用）
       webglContextAttributes: { preserveDrawingBuffer: new URLSearchParams(location.search).has("capture") },
       companyName: "KuraTwin",

@@ -14,3 +14,25 @@
   targetPort = 5173
   port = 8888
   framework = "#custom"
+
+# 3D（Unity WebGL）は Brotli で圧縮して置いてある。ブラウザ自身に解凍させるため Content-Encoding を付ける
+[[headers]]
+  for = "/unity/Build/*.wasm.unityweb"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Content-Encoding = "br"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/unity/Build/*.js.unityweb"
+  [headers.values]
+    Content-Type = "application/javascript"
+    Content-Encoding = "br"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/unity/Build/*.data.unityweb"
+  [headers.values]
+    Content-Type = "application/octet-stream"
+    Content-Encoding = "br"
+    Cache-Control = "public, max-age=3600"
