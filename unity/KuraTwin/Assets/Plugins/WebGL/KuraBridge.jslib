@@ -11,9 +11,9 @@ mergeInto(LibraryManager.library, {
   KuraPatrol: function (idPtr, stepPtr, tempPtr) {
     if (window.kuraOnPatrol) window.kuraOnPatrol(UTF8ToString(idPtr), UTF8ToString(stepPtr), UTF8ToString(tempPtr));
   },
-  // x, y は画面の割合（0〜1、y は下から）
-  KuraBubble: function (textPtr, x, y, visible) {
+  // x, y は頭の中心、mx, my は口元（画面の割合 0〜1、y は下から）。r は頭の半径（画面の高さに対する割合）
+  KuraBubble: function (textPtr, x, y, visible, mx, my, r) {
     var text = UTF8ToString(textPtr);
-    if (window.kuraOnTojiBubble) window.kuraOnTojiBubble(text, x, y, visible === 1);
+    if (window.kuraOnTojiBubble) window.kuraOnTojiBubble(text, x, y, visible === 1, mx, my, r);
   }
 });

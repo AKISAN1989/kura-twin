@@ -55,13 +55,19 @@ html, body { margin: 0; height: 100%; background: var(--plaster); color: var(--i
 .stage-hint.gone, .stage.talking .stage-hint { opacity: 0; }
 .stage-hint { transition: opacity .4s; position: absolute; right: 12px; bottom: 10px; font-size: 11px; color: rgba(255,248,236,.85); pointer-events: none;
   background: rgba(31,27,22,.45); padding: 3px 8px; border-radius: 999px; letter-spacing: .04em; }
-.toji-bubble { position: absolute; transform: translate(-20%, -8px); max-width: min(380px, 60%);
-  background: #fffdf6; color: var(--ink); border: 2px solid #3a2f25; border-radius: 12px;
-  padding: 10px 12px; font-size: 14px; line-height: 1.7; max-height: calc(100% - 64px); overflow-y: auto;
-  box-shadow: 0 4px 14px rgba(0,0,0,.35); }
-.toji-bubble.side::after { display: none; }
-.toji-bubble::after { content: ""; position: absolute; left: 18%; bottom: -10px; border: 8px solid transparent;
-  border-top-color: #3a2f25; border-bottom: 0; }
+/* 杜氏の吹き出し：和紙のような生成りの地に墨色の細い縁、角は大きく丸め、左上に名札。しっぽは SVG で口元へ */
+.toji-bubble { position: absolute; z-index: 3; width: max-content; max-width: min(17.5em, calc(100% - 20px));
+  background: #fbf6ea radial-gradient(circle at 20% 15%, rgba(255,255,255,.7), transparent 60%);
+  color: #231c15; border: 1.5px solid #2b241d; border-radius: 20px;
+  padding: 16px 18px 12px; font-family: var(--mincho); font-size: 15px; line-height: 1.85; letter-spacing: .02em;
+  box-shadow: 0 6px 18px rgba(20,14,8,.28); }
+.toji-bubble .toji-text { margin: 0; overflow-y: auto; word-break: auto-phrase; text-wrap: pretty; } /* 文節で改行し、読みやすく */ /* 入りきらない長さは、吹き出しの中でスクロール */
+.toji-bubble .rest { visibility: hidden; } /* まだ送っていない文字も場所だけ取り、吹き出しの大きさを途中で変えない */
+.toji-name { position: absolute; top: -11px; left: 16px; padding: 1px 10px; border-radius: 999px;
+  background: #2b241d; color: #fbf6ea; font-size: 11px; letter-spacing: .2em; line-height: 1.7; font-family: var(--mincho); }
+.toji-tail { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; overflow: visible; }
+.toji-tail polygon { fill: #fbf6ea; }
+.toji-tail polyline { fill: none; stroke: #2b241d; stroke-width: 1.5; stroke-linejoin: round; }
 
 /* 今と過去の表示（3Dの上・中央） */
 .time-badge { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); pointer-events: none;
@@ -122,7 +128,8 @@ input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 
 .patrol-sheet td { padding: 4px; font-variant-numeric: tabular-nums; }
 .patrol-sheet td.glow { color: #fff; background: var(--accent); border-radius: 6px; font-weight: 700; animation: written 1.6s ease-out; }
 @keyframes written { 0% { box-shadow: 0 0 0 0 rgba(184,88,42,.7); transform: scale(1.25); } 100% { box-shadow: 0 0 0 10px rgba(184,88,42,0); transform: scale(1); } }
-.toji-bubble.short { padding: 4px 10px; font-size: 13px; font-weight: 700; max-width: none; }
+.toji-bubble.short { padding: 4px 12px; font-size: 14px; font-weight: 700; border-radius: 999px; }
+.toji-bubble.short .toji-name { display: none; }
 
 /* 選んだタンク */
 .tank-card, .tank-summary { margin: 0 20px; padding: 14px 16px; border-radius: 12px; background: #fff; border: 1px solid var(--line);
@@ -290,6 +297,7 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
 
 @media (max-width: 860px) {
   .time-badge { top: 52px; font-size: 12px; } /* 狭い画面では、カメラのボタンの下に置く */
+  .toji-bubble { font-size: 14px; line-height: 1.75; padding: 14px 15px 10px; max-width: min(16em, calc(100% - 20px)); }
   .app { grid-template-columns: 1fr; grid-template-rows: 55vh auto; height: auto; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
   .panel > * { padding-left: 14px; padding-right: 14px; }

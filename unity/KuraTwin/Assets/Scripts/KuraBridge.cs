@@ -17,11 +17,12 @@ public partial class KuraBridge : MonoBehaviour
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport("__Internal")] static extern void KuraReady();
     [DllImport("__Internal")] static extern void KuraTankClicked(string id);
-    [DllImport("__Internal")] static extern void KuraBubble(string text, float x, float y, int visible);
+    // x, y：頭の中心（画面の割合、y は下から）。mx, my：口元。r：頭の半径（画面の高さに対する割合）
+    [DllImport("__Internal")] static extern void KuraBubble(string text, float x, float y, int visible, float mx = 0, float my = 0, float r = 0);
 #else
     static void KuraReady() { Debug.Log("[Kura] ready"); }
     static void KuraTankClicked(string id) { Debug.Log("[Kura] clicked " + id); }
-    static void KuraBubble(string text, float x, float y, int visible) { if (visible == 1 && text != null) Debug.Log("[Kura] toji: " + text); }
+    static void KuraBubble(string text, float x, float y, int visible, float mx = 0, float my = 0, float r = 0) { if (visible == 1 && text != null) Debug.Log("[Kura] toji: " + text); }
 #endif
 
     [Serializable] public class TankState { public string id; public string stage; public float level; public float temp; public string joubou; public float activity; }
@@ -278,8 +279,19 @@ public partial class KuraBridge : MonoBehaviour
         float dx = walkTarget.x - toji.position.x;
         if (Mathf.Abs(dx) > 0.05f) walkDir = Mathf.Sign(dx);
         // 着いたときのカメラ：来た方向の少し後ろ、足場の反対側から、杜氏とタンクの両方が入る位置
-        arriveCamPos = new Vector3(walkTarget.x - walkDir * 2.3f, KuraScene.DeckHeight + 2.3f, -side * 0.45f);
-        arriveLookAt = new Vector3(walkTarget.x + walkDir * 0.15f, KuraScene.DeckHeight - 0.35f, side * 1.25f);
+        // 語るときのカメラ：来た方向の後ろ（追ってきたカメラが杜氏を突き抜けない側）から、振り向いた杜氏の顔を見る。
+        // 顔と吹き出しの両方が入るよう、頭の上と横に間をあける（縦長の画面ほど少し引く）
+        if (cam != null && cam.aspect < 1f)
+        {
+            // 縦長（スマホ）：横に吹き出しを置く幅がないので、杜氏の頭を画面の下寄りにして、頭の上に吹き出しの場所をあける
+            arriveCamPos = new Vector3(walkTarget.x - walkDir * 3.0f, KuraScene.DeckHeight + 1.45f, -side * 0.1f); // 目の高さから見上げ気味に（顔が帽子に隠れない）
+            arriveLookAt = new Vector3(walkTarget.x, KuraScene.DeckHeight + 2.3f, side * StandZ);
+        }
+        else
+        {
+            arriveCamPos = new Vector3(walkTarget.x - walkDir * 2.6f, KuraScene.DeckHeight + 1.7f, -side * 0.25f);
+            arriveLookAt = new Vector3(walkTarget.x - walkDir * 0.1f, KuraScene.DeckHeight + 1.25f, side * 0.75f);
+        }
         pendingText = text;
         Speak(""); // 歩いているあいだは吹き出しを出さない
         guiding = true;
@@ -807,8 +819,7 @@ public partial class KuraBridge : MonoBehaviour
             if (Time.time > workBubbleUntil) { workBubble = ""; KuraBubble("", 0, 0, 0); }
             else
             {
-                var sp = cam.WorldToScreenPoint(tojiHead.position + Vector3.up * 0.3f);
-                KuraBubble(workBubble, sp.x / Screen.width, sp.y / Screen.height, sp.z > 0 ? 1 : 0);
+                SendBubble(workBubble);
             }
         }
 
@@ -818,10 +829,21 @@ public partial class KuraBridge : MonoBehaviour
             if (Time.time > bubbleUntil) { bubbleText = ""; KuraBubble("", 0, 0, 0); }
             else
             {
-                var sp = cam.WorldToScreenPoint(tojiHead.position + Vector3.up * 0.3f);
-                bool visible = sp.z > 0;
-                KuraBubble(bubbleText, sp.x / Screen.width, sp.y / Screen.height, visible ? 1 : 0);
+                SendBubble(bubbleText);
             }
         }
+    }
+
+    // 吹き出しを置くための頭と口元の位置を Web 側へ。吹き出しは顔を避けて置き、しっぽを口元に向ける
+    void SendBubble(string text)
+    {
+        var up = Vector3.up;
+        var fwd = toji != null ? toji.forward : Vector3.forward; fwd.y = 0f; fwd.Normalize();
+        var center = tojiHead.position + up * 0.09f;
+        var c = cam.WorldToScreenPoint(center);
+        var top = cam.WorldToScreenPoint(center + up * 0.17f);
+        var mouth = cam.WorldToScreenPoint(tojiHead.position + up * 0.03f + fwd * 0.1f);
+        float r = Vector2.Distance(new Vector2(c.x, c.y), new Vector2(top.x, top.y)) / Screen.height;
+        KuraBubble(text, c.x / Screen.width, c.y / Screen.height, c.z > 0 ? 1 : 0, mouth.x / Screen.width, mouth.y / Screen.height, r);
     }
 }

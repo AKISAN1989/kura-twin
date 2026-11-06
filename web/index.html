@@ -20,7 +20,8 @@
         <div id="loader-text" class="kura-loader-text">蔵の戸を開けています…</div>
       </div>
     </div>
-    <div id="toji-bubble" class="toji-bubble" hidden></div>
+    <svg id="toji-tail" class="toji-tail" aria-hidden="true" style="display:none"><polygon></polygon><polyline></polyline></svg>
+    <div id="toji-bubble" class="toji-bubble" role="status" aria-live="polite" hidden><span class="toji-name">杜氏</span><p class="toji-text"></p></div>
     <div id="time-badge" class="time-badge" aria-live="polite"></div>
     <div id="stage-hint" class="stage-hint" aria-hidden="true">ドラッグで回す・スクロールで寄る・タンクを押して近づく</div>
     <div class="stage-tools">

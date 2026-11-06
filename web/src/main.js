@@ -66,35 +66,91 @@ async function startUnity() {
   }
 }
 
-// 杜氏の吹き出し：Unity が頭の位置（画面の割合、y は下から）を毎フレーム知らせてくる
-window.kuraOnTojiBubble = (text, x, y, visible) => {
-  const el = $("toji-bubble");
-  el.parentElement.classList.toggle("talking", !!(text && visible)); // 話しているあいだは操作のヒントを隠す
-  if (!text || !visible) { el.hidden = true; return; }
+// 杜氏の吹き出し：Unity が毎フレーム、頭の中心・口元（画面の割合、y は下から）と頭の半径を知らせてくる。
+// 吹き出しは顔と頭を避けて、頭の横（空いている側）か頭の上に置き、しっぽを口元へ向ける。
+// 上のカメラのボタン・日付の表示と画面の端にも重ならないようにする。長い答えは1文字ずつ送る
+const bubble = { text: "", shown: 0, startedAt: 0 };
+const TYPE_MS = 45; // 1文字の間
+window.kuraOnTojiBubble = (text, x, y, visible, mx, my, r) => {
+  const el = $("toji-bubble"), tail = $("toji-tail"), stage = el.parentElement;
+  stage.classList.toggle("talking", !!(text && visible)); // 話しているあいだは操作のヒントを隠す
+  if (!text || !visible) { el.hidden = true; tail.style.display = "none"; bubble.text = ""; return; }
+  const short = [...text].length <= 8; // 見回りの品温（「11.0℃」）は小さな吹き出し
+  if (bubble.text !== text) { bubble.text = text; bubble.startedAt = performance.now(); bubble.shown = short ? Infinity : 0; }
   el.hidden = false;
-  if (el.textContent !== text) el.textContent = text;
-  el.classList.toggle("short", [...text].length <= 8); // 見回りの品温（「11.0℃」）は小さな吹き出し
-  const w = el.parentElement.clientWidth, h = el.parentElement.clientHeight;
-  // 上の余白：カメラのボタンと日付の表示（狭い画面ではボタンの下にある）に重ならないように。入りきらない分はスクロール
-  const badge = $("time-badge");
-  const top = Math.max(56, badge && badge.textContent ? badge.offsetTop + badge.offsetHeight + 8 : 0);
-  el.style.maxHeight = `${Math.max(60, h - top - 8)}px`;
-  const bh = el.offsetHeight, bw = el.offsetWidth;
-  if (h - y * h - top >= bh) {
-    // 頭の上に置く（ふつう）
-    el.classList.remove("side");
-    el.style.transform = "";
-    el.style.left = `${Math.min(0.75, Math.max(0.12, x)) * 100}%`;
-    el.style.bottom = `${Math.max(8, y * h)}px`;
-  } else {
-    // 頭の上に入りきらないとき（杜氏の近くで止まったカメラなど）は、杜氏に重ならないよう頭の横に置く
-    el.classList.add("side");
-    el.style.transform = "none";
-    const px = x * w, gap = 46;
-    const left = px < w / 2 ? px + gap : px - gap - bw;
-    el.style.left = `${Math.max(8, Math.min(w - bw - 8, left))}px`;
-    el.style.bottom = `${Math.max(8, Math.min(y * h - bh * 0.6, h - bh - top))}px`;
+  el.classList.toggle("short", short);
+  // 1文字ずつ送る（読み上げは全文を一度に）
+  const chars = [...text];
+  const n = short ? chars.length : Math.min(chars.length, Math.floor((performance.now() - bubble.startedAt) / TYPE_MS) + 1);
+  const p = el.querySelector(".toji-text");
+  if (p.dataset.n !== String(n) || p.dataset.full !== text) {
+    p.dataset.n = n; p.dataset.full = text;
+    p.innerHTML = "";
+    p.append(document.createTextNode(chars.slice(0, n).join("")));
+    if (n < chars.length) { const rest = document.createElement("span"); rest.className = "rest"; rest.textContent = chars.slice(n).join(""); p.append(rest); }
   }
+
+  const W = stage.clientWidth, H = stage.clientHeight;
+  // 上の余白：カメラのボタンと日付の表示（狭い画面ではボタンの下）
+  const tools = stage.querySelector(".stage-tools"), badge = $("time-badge");
+  const top = Math.max(tools ? tools.offsetTop + tools.offsetHeight + 8 : 56,
+    badge && badge.textContent ? badge.offsetTop + badge.offsetHeight + 8 : 0);
+  const pad = 10;
+  p.style.maxHeight = `${Math.max(40, H - top - pad - 30)}px`;
+  const bw = el.offsetWidth, bh = el.offsetHeight;
+
+  // 頭（顔）の範囲：画面の座標（y は上から）
+  const hx = x * W, hy = H - y * H, hr = Math.max(14, (r || 0.03) * H);
+  const head = { l: hx - hr * 1.25, r: hx + hr * 1.25, t: hy - hr * 1.5, b: hy + hr * 1.15 };
+  const gap = Math.max(18, hr * 0.7);
+  const clampX = v => Math.max(pad, Math.min(W - bw - pad, v));
+  const clampY = v => Math.max(top, Math.min(H - bh - pad, v));
+  const overlaps = (L, T) => L < head.r && L + bw > head.l && T < head.b && T + bh > head.t;
+  // 候補：空いている側の横 → 反対側の横 → 頭の上。顔に重ならない最初のものを使う
+  const freeRight = W - head.r >= head.l;
+  const sideY = clampY(hy - bh * 0.55);
+  const sides = [
+    [freeRight ? head.r + gap : head.l - gap - bw, sideY],
+    [freeRight ? head.l - gap - bw : head.r + gap, sideY],
+  ];
+  const above = [hx - bw * 0.4, head.t - gap - bh];
+  // 狭い画面（スマホ）は頭の上を先に試す
+  const cands = (W < 600 ? [above, ...sides] : [...sides, above])
+    .map(([L, T]) => ({ L: clampX(L), T: clampY(T), raw: [L, T] }));
+  const overlapArea = c => Math.max(0, Math.min(c.L + bw, head.r) - Math.max(c.L, head.l)) * Math.max(0, Math.min(c.T + bh, head.b) - Math.max(c.T, head.t));
+  const pick = cands.find(c => !overlaps(c.L, c.T) && Math.abs(c.L - c.raw[0]) < 2 && Math.abs(c.T - c.raw[1]) < 2) // 収まって、顔に重ならない
+    ?? cands.find(c => !overlaps(c.L, c.T))
+    ?? [...cands].sort((a, b) => overlapArea(a) - overlapArea(b))[0]; // どこも重なるときは、いちばん重なりの少ない所
+  el.style.left = `${pick.L}px`;
+  el.style.top = `${pick.T}px`;
+
+  // しっぽ：吹き出しの縁から口元へ（顔に食い込まないよう、口元の少し手前で止める）
+  const mX = (mx || x) * W, mY = H - (my || y) * H;
+  const cx = pick.L + bw / 2, cy = pick.T + bh / 2;
+  let dx = mX - cx, dy = mY - cy;
+  const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+  // 吹き出しの縁との交点。丸い角には付けず、まっすぐな辺の上に寄せる
+  const tx = Math.abs(bw / 2 / (dx || 1e-6)), ty = Math.abs(bh / 2 / (dy || 1e-6));
+  const rad = Math.min(20, bh / 2 - 1);
+  let ex = cx + dx * Math.min(tx, ty), ey = cy + dy * Math.min(tx, ty);
+  if (tx < ty) ey = Math.max(pick.T + rad, Math.min(pick.T + bh - rad, ey)); // 左右の辺
+  else ex = Math.max(pick.L + rad, Math.min(pick.L + bw - rad, ex));         // 上下の辺
+  // 縁の点から口元へ向け直す（しっぽは常に口元を指す）
+  dx = mX - ex; dy = mY - ey;
+  const toMouth = Math.hypot(dx, dy) || 1; dx /= toMouth; dy /= toMouth;
+  // 先は口元の方向を向けたまま、頭の輪郭（少し外側）で止める。顔や帽子にかぶらないように
+  const R = hr * 1.2, ox = ex - hx, oy = ey - hy;
+  const bq = ox * dx + oy * dy, cq = ox * ox + oy * oy - R * R, disc = bq * bq - cq;
+  let reach = toMouth - 6; // 頭に当たらなければ口元の少し手前まで
+  if (cq > 0 && disc > 0) { const tHit = -bq - Math.sqrt(disc); if (tHit > 0) reach = Math.min(reach, tHit - 3); }
+  const tipX = ex + dx * Math.max(0, reach), tipY = ey + dy * Math.max(0, reach);
+  if (Math.hypot(tipX - ex, tipY - ey) < 8) { tail.style.display = "none"; return; } // 短すぎるしっぽは出さない
+  const half = short ? 6 : 10, nx = -dy * half, ny = dx * half;
+  const inX = ex - dx * 3, inY = ey - dy * 3; // 縁のすぐ内側から描いて、つなぎ目の線を消す
+  tail.style.display = "";
+  tail.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  tail.querySelector("polygon").setAttribute("points", `${inX + nx},${inY + ny} ${tipX},${tipY} ${inX - nx},${inY - ny}`);
+  tail.querySelector("polyline").setAttribute("points", `${ex + nx},${ey + ny} ${tipX},${tipY} ${ex - nx},${ey - ny}`);
 };
 // ---------- 杜氏の見回り（Unity から：kai → temp → write → done） ----------
 const PATROL_STEPS = [["kai", "櫂入れ"], ["temp", "品温を測る"], ["write", "経過簿に書く"]];
