@@ -3,6 +3,7 @@ import { store } from "./store.js";
 import { app } from "./app.js";
 import { esc } from "./api.js";
 import { tankChart } from "./chart.js";
+import { allTanksOn } from "./tank-state.js";
 import { initToji } from "./panels/toji.js";
 import { initYoung } from "./panels/young.js";
 import { initSummary } from "./panels/summary.js";
@@ -181,13 +182,13 @@ window.kuraOnPatrol = (id, step, temp) => {
 window.kuraOnUnityReady = () => { app.resend(); app.emit("unity-ready"); };
 
 // ---------- 今と過去の表示（3Dの上） ----------
-// 表示している日付と「今季／昨季」。過去へ移るときは、日付がさかのぼるように数字を動かす
+// 表示している日付と「今季／過去の仕込み」。過去へ移るときは、日付がさかのぼるように数字を動かす
 let badgeShown = null; // { date, past }
 let badgeTimer = null;
 const md = d => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
 function badgeText(date, past) {
   const y = date.slice(0, 4);
-  if (!app.isCurrent) return `昨季（${app.season}年 仕込み）　${y}年${md(date)}の記録`;
+  if (!app.isCurrent) return `過去の仕込み（${app.season}年）　${y}年${md(date)}の記録`;
   if (past) return `今季　${md(date)}の記録（判断メモ）`;
   return `今季（${app.season}年 仕込み）　${md(date)}${date === app.seasonData.today ? "（今日）" : ""}`;
 }
@@ -216,8 +217,7 @@ function renderTimeBadge() {
 
 // ---------- 季・日付・タンク ----------
 function renderDay() {
-  $("day-slider").max = String(app.calendar.length - 1);
-  $("day-slider").value = String(app.dayIndex);
+  renderStrip();
   const d = app.date;
   $("day-label").textContent = `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日${app.isCurrent && d === app.seasonData.today ? "（今日）" : ""}`;
   document.body.classList.toggle("past", app.isPast); // 今季は暖かい色、過去は青みのある色（左の3Dと揃える）
@@ -225,12 +225,63 @@ function renderDay() {
   renderTankDetail();
 }
 
+// 暦の帯：1日1枡。変化のあった日と判断メモのある日の印は、季と判断メモの数が変わったときだけ数え直す
+let stripKey = "", stripMarks = null;
+function renderStrip() {
+  const strip = $("day-strip");
+  const memoDates = new Set(store.allMemos().filter(m => m.season === app.season).map(m => m.date));
+  const key = `${app.season}|${app.calendar.length}|${memoDates.size}`;
+  if (key !== stripKey) {
+    stripKey = key;
+    stripMarks = app.calendar.map(d => ({ ev: app.eventsOn(d).length > 0, memo: memoDates.has(d) }));
+    const today = app.isCurrent ? app.seasonData.today : null;
+    strip.innerHTML = app.calendar.map((d, i) => {
+      const day = Number(d.slice(8, 10)), m = Number(d.slice(5, 7));
+      const first = i === 0 || day === 1;
+      const mk = stripMarks[i];
+      const label = `${m}月${day}日${mk.ev ? "・変化あり" : ""}${mk.memo ? "・判断メモあり" : ""}`;
+      return `<button type="button" role="option" tabindex="-1" data-i="${i}" class="cal-day${first ? " month" : ""}${d === today ? " today" : ""}" aria-label="${label}">
+        ${first ? `<span class="cal-m">${m}月</span>` : ""}<span class="cal-d">${day}</span>
+        <span class="cal-mk">${mk.ev ? '<i class="mk ev"></i>' : ""}${mk.memo ? '<i class="mk memo"></i>' : ""}</span></button>`;
+    }).join("");
+  }
+  strip.querySelectorAll(".cal-day.on").forEach(b => { b.classList.remove("on"); b.setAttribute("aria-selected", "false"); });
+  const cur = strip.querySelector(`[data-i="${app.dayIndex}"]`);
+  if (cur) {
+    cur.classList.add("on"); cur.setAttribute("aria-selected", "true");
+    const smooth = stripKey === strip.dataset.shown;
+    strip.dataset.shown = stripKey;
+    requestAnimationFrame(() => centerStrip(smooth));
+  }
+}
+
+// 選んだ日が帯の中ほどに来るように（ページ全体は動かさない）。杜氏のタブでは帯が隠れているので、タブを移ったときにも呼ぶ
+function centerStrip(smooth = false) {
+  const strip = $("day-strip"), cur = strip.querySelector(".cal-day.on");
+  if (!cur || !strip.clientWidth) return;
+  const s = strip.getBoundingClientRect(), c = cur.getBoundingClientRect();
+  const want = strip.scrollLeft + (c.left - s.left) - s.width / 2 + c.width / 2;
+  strip.scrollTo({ left: Math.max(0, want), behavior: smooth ? "smooth" : "auto" });
+}
+
+// タンクの見取り図：奥（6〜10号）と手前（1〜5号）の間に足場。緑の琺瑯タンクを上から見た絵
 function renderTankButtons() {
   const events = new Set(app.eventsOn().map(e => e.tank));
-  $("tank-buttons").innerHTML = store.kura.tanks.map(t => {
-    const cls = [app.selected === t.id ? "on" : "", events.has(t.id) ? "alert" : ""].join(" ");
-    return `<button type="button" data-id="${t.id}" class="${cls}" title="${events.has(t.id) ? "変化あり" : ""}">${esc(t.label)}</button>`;
-  }).join("");
+  const states = new Map(allTanksOn(app.seasonData, app.date, store.kura.tank_capacity_l ?? 3000).map(s => [s.id, s]));
+  const tankBtn = t => {
+    const st = states.get(t.id);
+    const empty = !st || st.level <= 0.001;
+    const cls = ["tk", app.selected === t.id ? "on" : "", events.has(t.id) ? "alert" : "", empty ? "empty" : ""].join(" ");
+    const label = `${t.label}${events.has(t.id) ? "・変化あり" : ""}${empty ? "・空（覆い）" : ""}`;
+    return `<button type="button" data-id="${t.id}" class="${cls}" aria-label="${esc(label)}" aria-pressed="${app.selected === t.id}">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><circle class="tk-rim" cx="20" cy="20" r="17"/><circle class="tk-in" cx="20" cy="20" r="12.5"/></svg>
+      <span class="tk-n">${esc(t.id)}</span></button>`;
+  };
+  const back = store.kura.tanks.filter(t => t.row === 1).sort((a, b) => a.x - b.x);
+  const front = store.kura.tanks.filter(t => t.row !== 1).sort((a, b) => a.x - b.x);
+  $("tank-buttons").innerHTML = `<div class="tk-row">${back.map(tankBtn).join("")}</div>
+    <div class="tk-deck" aria-hidden="true"></div>
+    <div class="tk-row">${front.map(tankBtn).join("")}</div>`;
 }
 
 function renderTankDetail() {
@@ -306,11 +357,20 @@ function initTabs() {
 
 async function main() {
   await store.load();
-  $("kura-name").textContent = store.kura.name;
+  // 季：今季と、毎年積み重なる過去の仕込み
   $("season-select").innerHTML = Object.keys(store.seasons).sort().reverse()
-    .map(s => `<option value="${s}">${s}年 仕込み${s === store.currentSeason ? "（今季）" : "（前季）"}</option>`).join("");
+    .map(s => `<option value="${s}">${s === store.currentSeason ? `今季（${s}年 仕込み）` : `過去の仕込み（${s}年）`}</option>`).join("");
   $("season-select").onchange = e => app.setSeason(e.target.value);
-  $("day-slider").addEventListener("input", e => app.setDayIndex(Number(e.target.value)));
+  $("day-strip").addEventListener("click", e => {
+    const b = e.target.closest("[data-i]");
+    if (b) app.setDayIndex(Number(b.dataset.i));
+  });
+  $("day-strip").addEventListener("keydown", e => {
+    const step = { ArrowLeft: -1, ArrowRight: 1, Home: -1e4, End: 1e4 }[e.key];
+    if (step == null) return;
+    e.preventDefault();
+    app.setDayIndex(app.dayIndex + step);
+  });
   $("tank-buttons").addEventListener("click", e => {
     const id = e.target.closest("button")?.dataset.id;
     if (id) app.selectTank(app.selected === id ? null : id);
@@ -327,7 +387,8 @@ async function main() {
 
   app.onChange(kind => {
     if (kind === "season") $("season-select").value = app.season;
-    if (kind !== "tab") renderDay();
+    if (kind !== "tab") renderDay(); // 判断メモを残したときも、暦の印を数え直す
+    if (kind === "tab") requestAnimationFrame(() => centerStrip());
     if (kind !== "tab") renderTimeBadge();
   });
   initTabs();

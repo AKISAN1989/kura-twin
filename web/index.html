@@ -30,11 +30,39 @@
     </div>
   </section>
 
+  <!-- タブの小さな人物の絵：蔵人は手ぬぐい、杜氏は白い作業帽 -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="fig-kurabito" viewBox="0 0 24 24">
+      <path d="M4 23c.4-4.6 3.6-7 8-7s7.6 2.4 8 7z" fill="#2c3a4e" stroke="#1f1a15" stroke-width="1"/>
+      <circle cx="12" cy="10" r="5" fill="#e9c9a5" stroke="#1f1a15" stroke-width="1"/>
+      <path d="M6.9 8.6c1.5-1.1 3.2-1.6 5.1-1.6s3.6.5 5.1 1.6l-.3 1.6c-1.5-.9-3.1-1.3-4.8-1.3s-3.3.4-4.8 1.3z" fill="#fff" stroke="#1f1a15" stroke-width=".8"/>
+      <path d="M17 9.2l2.6-.9-.6 1.9 1.4 1.3-2.9-.4z" fill="#fff" stroke="#1f1a15" stroke-width=".7"/>
+    </symbol>
+    <symbol id="fig-toji" viewBox="0 0 24 24">
+      <path d="M4 23c.4-4.6 3.6-7 8-7s7.6 2.4 8 7z" fill="#26405f" stroke="#1f1a15" stroke-width="1"/>
+      <path d="M9.6 16.3L12 21l2.4-4.7" fill="none" stroke="#fff" stroke-width="1.3"/>
+      <circle cx="12" cy="10.6" r="4.8" fill="#e9c9a5" stroke="#1f1a15" stroke-width="1"/>
+      <path d="M6.6 9.4c0-3.4 2.4-5.6 5.4-5.6s5.4 2.2 5.4 5.6z" fill="#fff" stroke="#1f1a15" stroke-width="1"/>
+      <path d="M6.3 9.4h11.4" stroke="#1f1a15" stroke-width="1"/>
+    </symbol>
+  </svg>
+
   <aside class="panel">
     <header class="masthead">
       <div class="brand">
-        <h1>蔵ツイン</h1>
-        <p id="kura-name" class="kura-name"></p>
+        <h1><span class="title">蔵ツイン</span>
+          <!-- 落款：朱の印に「蔵」。縁は少し欠けたように -->
+          <svg class="seal" viewBox="0 0 40 40" aria-hidden="true">
+            <defs><filter id="seal-rough" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7"/>
+              <feDisplacementMap in="SourceGraphic" scale="2.2"/></filter></defs>
+            <g filter="url(#seal-rough)">
+              <rect x="3" y="3" width="34" height="34" rx="3" fill="#b8352a"/>
+              <rect x="6" y="6" width="28" height="28" rx="1.5" fill="none" stroke="#fbf3e6" stroke-width="1.4"/>
+              <text x="20" y="28.5" text-anchor="middle" font-size="22" font-family="Hiragino Mincho ProN, Yu Mincho, serif" font-weight="700" fill="#fbf3e6">蔵</text>
+            </g>
+          </svg></h1>
+        <p class="subtitle">経過簿から、杜氏の判断を蔵に残す</p>
       </div>
       <label class="season">
         <span class="sr-only">季</span>
@@ -47,10 +75,18 @@
 
     <section class="timeline" aria-label="日付とタンク">
       <div class="day">
-        <output id="day-label" class="day-label"></output>
-        <input id="day-slider" type="range" min="0" max="0" value="0" aria-label="日付">
+        <div class="day-head">
+          <output id="day-label" class="day-label"></output>
+          <span class="legend" aria-hidden="true"><i class="mk ev"></i>変化 <i class="mk memo"></i>判断メモ</span>
+        </div>
+        <!-- 暦の帯：1日1枡。変化のあった日（柿色の点）と判断メモのある日（墨の印）に印を付ける -->
+        <div id="day-strip" class="cal" role="listbox" aria-label="日付" tabindex="0"></div>
       </div>
-      <div id="tank-buttons" class="tanks" aria-label="タンク"></div>
+      <!-- タンクの見取り図：3Dの蔵と同じ並び（奥に6〜10号、足場をはさんで手前に1〜5号）を上から見た形 -->
+      <div class="tank-map" aria-label="タンクの見取り図">
+        <span class="map-tag back">奥</span><span class="map-tag front">手前・入口</span>
+        <div id="tank-buttons" class="tank-grid"></div>
+      </div>
     </section>
 
     <section id="tank-detail" class="tank-card" hidden></section>
@@ -60,9 +96,9 @@
     </section>
 
     <nav class="roles" role="tablist" aria-label="使う人">
-      <button role="tab" data-tab="import" aria-selected="false"><span class="who">蔵人</span><span class="what">記録を読む</span></button>
-      <button role="tab" data-tab="toji" aria-selected="true"><span class="who">杜氏</span><span class="what">理由を残す</span></button>
-      <button role="tab" data-tab="young" aria-selected="false"><span class="who">蔵人</span><span class="what">杜氏に聞く</span></button>
+      <button role="tab" data-tab="import" aria-selected="false"><span class="who"><svg class="fig"><use href="#fig-kurabito"/></svg>蔵人</span><span class="what">経過簿を撮る</span></button>
+      <button role="tab" data-tab="toji" aria-selected="true"><span class="who"><svg class="fig"><use href="#fig-toji"/></svg>杜氏</span><span class="what">判断を語る</span></button>
+      <button role="tab" data-tab="young" aria-selected="false"><span class="who"><svg class="fig"><use href="#fig-kurabito"/></svg>蔵人</span><span class="what">杜氏に聞く</span></button>
     </nav>
 
     <section id="tab-import" class="tab-body" hidden>
