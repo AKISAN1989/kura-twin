@@ -16,6 +16,9 @@ export async function postJson(path, body) {
   } catch {
     // 返答が JSON でない（サーバーが起動していない等）
   }
+  if (res.status === 429 && !data?.error) {
+    throw new Error("短い時間に多く使われました。1分ほど待ってから再実行してください");
+  }
   if (!res.ok || !data) {
     throw new Error(data?.error ?? `サーバーから返答がありませんでした（${res.status}）。netlify dev で起動しているか確認してください`);
   }

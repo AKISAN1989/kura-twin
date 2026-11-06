@@ -58,4 +58,5 @@ export default handler(async ({ image, mediaType, year }) => {
   return result;
 });
 
-export const config = { path: "/api/read-sheet" };
+// 同じ利用者（IP）からは1分間に 5 回まで（Netlify の rateLimit。超えると 429）
+export const config = { path: "/api/read-sheet", rateLimit: { windowLimit: 5, windowSize: 60, aggregateBy: ["ip", "domain"] } };

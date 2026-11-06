@@ -2,6 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { TERMS } from "../../shared/terms.mjs";
+import { checkLimits, LimitError } from "./limits.mjs";
 
 export const MODELS = {
   precise: "claude-opus-5-5", // 手書きの読み取り・読み直し・回答・照合
@@ -55,8 +56,14 @@ export async function askJson({ model, system, content, schema, effort = "medium
 
 /** Function の入口：JSON を受け取り、エラーは日本語のメッセージで返す */
 export function handler(fn) {
-  return async req => {
+  return async (req, context) => {
     if (req.method !== "POST") return json({ error: "POST で送ってください" }, 405);
+    try {
+      await checkLimits(context?.ip ?? req.headers.get("x-nf-client-connection-ip"));
+    } catch (e) {
+      if (e instanceof LimitError) return json({ error: e.message }, 429);
+      throw e;
+    }
     let body;
     try {
       body = await req.json();

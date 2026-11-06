@@ -19,14 +19,33 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
 /* 左：3D */
 .stage { position: relative; background: var(--stage); overflow: hidden; }
 #unity-canvas { width: 100%; height: 100%; display: block; }
-.unity-status { position: absolute; inset: 0; display: grid; place-items: center; color: #d9d2c4;
-  font-size: 14px; text-align: center; padding: 16px; pointer-events: none; }
+/* 読み込み中の画面：白い漆喰の壁と木の梁 */
+.kura-loader { position: absolute; inset: 0; display: grid; place-items: center; z-index: 5;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.55), transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(120,100,70,.10), transparent 55%),
+    #ece6da;
+  transition: opacity .6s ease; }
+.kura-loader.done { opacity: 0; pointer-events: none; }
+.kura-loader-beam { position: absolute; left: 0; right: 0; top: 14%; height: 22px; background: linear-gradient(#5a3d27, #3f2a1b);
+  box-shadow: 0 6px 14px rgba(40,25,10,.25); }
+.kura-loader-beam::after { content: ""; position: absolute; left: 0; right: 0; top: 66px; height: 10px; background: linear-gradient(#5a3d27, #3f2a1b); opacity: .7; }
+.kura-loader-card { text-align: center; color: #2b2118; }
+.kura-loader-title { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 44px; letter-spacing: .5em; margin-right: -.5em; }
+.kura-loader-sub { margin-top: 8px; font-size: 13px; letter-spacing: .15em; color: #6b5d4c; }
+.kura-loader-bar { margin: 26px auto 10px; width: min(320px, 60vw); height: 6px; border-radius: 3px; background: #d9d0c0;
+  box-shadow: inset 0 1px 2px rgba(60,40,20,.2); overflow: hidden; }
+.kura-loader-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8a5a36, #6b4429); transition: width .25s ease; }
+.kura-loader-text { font-size: 12px; color: #7a6c5a; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.kura-loader.failed .kura-loader-bar { display: none; }
+.kura-loader.failed .kura-loader-text { color: #7d1a12; }
 .stage-tools { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
 .stage-tools button { background: rgba(255,253,248,.92); }
 .toji-bubble { position: absolute; transform: translate(-20%, -8px); max-width: min(380px, 60%);
   background: #fffdf6; color: var(--ink); border: 2px solid #3a2f25; border-radius: 12px;
   padding: 10px 12px; font-size: 14px; line-height: 1.7; max-height: calc(100% - 64px); overflow-y: auto;
   box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+.toji-bubble.side::after { display: none; }
 .toji-bubble::after { content: ""; position: absolute; left: 18%; bottom: -10px; border: 8px solid transparent;
   border-top-color: #3a2f25; border-bottom: 0; }
 
@@ -128,6 +147,7 @@ table.sheet { border-collapse: collapse; font-size: 12px; }
 .foot { margin-top: 24px; font-size: 12px; color: var(--muted); }
 
 @media (max-width: 860px) {
+  .time-badge { top: 52px; font-size: 12px; } /* 狭い画面では、カメラのボタンの下に置く */
   .app { grid-template-columns: 1fr; grid-template-rows: 55vh auto; height: auto; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
 }

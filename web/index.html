@@ -10,7 +10,16 @@
 <div class="app">
   <section class="stage">
     <canvas id="unity-canvas" tabindex="-1"></canvas>
-    <div id="unity-status" class="unity-status">3Dを読み込んでいます…</div>
+    <!-- 読み込み中の画面：白い漆喰の壁と木の梁の色。Unity のロゴは出さない -->
+    <div id="unity-status" class="kura-loader" role="status">
+      <div class="kura-loader-beam"></div>
+      <div class="kura-loader-card">
+        <div class="kura-loader-title">蔵ツイン</div>
+        <div class="kura-loader-sub">経過簿から、杜氏の判断を蔵に残す</div>
+        <div class="kura-loader-bar"><span id="loader-fill"></span></div>
+        <div id="loader-text" class="kura-loader-text">蔵の戸を開けています…</div>
+      </div>
+    </div>
     <div id="toji-bubble" class="toji-bubble" hidden></div>
     <div id="time-badge" class="time-badge" aria-live="polite"></div>
     <div class="stage-tools">

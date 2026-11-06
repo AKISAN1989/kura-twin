@@ -735,6 +735,9 @@ public static class KuraBuild
         PlayerSettings.productName = "KuraTwin";
         PlayerSettings.runInBackground = true;
         PlayerSettings.colorSpace = ColorSpace.Linear;
+        // 起動時の「Made with Unity」は出さない（Unity 6 は Personal でも非表示にできる）。読み込み中の画面は Web 側（蔵ツインの見た目）で出す
+        PlayerSettings.SplashScreen.show = false;
+        PlayerSettings.SplashScreen.showUnityLogo = false;
 
         var opts = new BuildPlayerOptions
         {

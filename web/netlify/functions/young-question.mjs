@@ -100,4 +100,5 @@ export default handler(async ({ question, candidates }) => {
   return { found: true, answer: kept.map(s => s.text).join(""), sentences: kept, removed, sources, draft: draft.sentences };
 });
 
-export const config = { path: "/api/young-question" };
+// 同じ利用者（IP）からは1分間に 8 回まで（Netlify の rateLimit。超えると 429）
+export const config = { path: "/api/young-question", rateLimit: { windowLimit: 8, windowSize: 60, aggregateBy: ["ip", "domain"] } };

@@ -14,6 +14,8 @@ const $ = id => document.getElementById(id);
 async function startUnity() {
   const base = "unity/Build/kura";
   const status = $("unity-status");
+  const setText = t => { $("loader-text").textContent = t; };
+  const fail = t => { status.classList.add("failed"); setText(t); };
   try {
     await new Promise((resolve, reject) => {
       const s = document.createElement("script");
@@ -23,7 +25,7 @@ async function startUnity() {
       document.body.appendChild(s);
     });
   } catch {
-    status.textContent = "Unity版がまだ書き出されていません（web/public/unity/ に置くとここに表示されます）";
+    fail("Unity版がまだ書き出されていません（web/public/unity/ に置くとここに表示されます）");
     return;
   }
   // 書き出しの版（毎回変わる）を URL に付け、新しい3Dを確実に読む
@@ -40,11 +42,16 @@ async function startUnity() {
       companyName: "KuraTwin",
       productName: "KuraTwin",
       productVersion: "0.1",
-    }, p => { status.textContent = `3Dを読み込んでいます… ${Math.round(p * 100)}%`; });
-    status.remove();
+    }, p => {
+      $("loader-fill").style.width = `${Math.round(p * 100)}%`;
+      setText(p < 0.9 ? `蔵の戸を開けています… ${Math.round(p * 100)}%` : "蔵を組み立てています…");
+    });
+    // 読み込みが終わったら、ふわっと消す
+    status.classList.add("done");
+    setTimeout(() => status.remove(), 700);
     bridge.attachUnity(instance);
   } catch (e) {
-    status.textContent = `3Dを表示できませんでした：${e.message ?? e}`;
+    fail(`3Dを表示できませんでした：${e.message ?? e}`);
   }
 }
 
@@ -54,10 +61,27 @@ window.kuraOnTojiBubble = (text, x, y, visible) => {
   if (!text || !visible) { el.hidden = true; return; }
   el.hidden = false;
   if (el.textContent !== text) el.textContent = text;
-  el.style.left = `${Math.min(0.75, Math.max(0.12, x)) * 100}%`;
-  // 長い答えでも、3Dの枠の上端（カメラのボタンの下）からはみ出さないようにする
-  const h = el.parentElement.clientHeight;
-  el.style.bottom = `${Math.max(8, Math.min(y * h, h - el.offsetHeight - 56))}px`;
+  const w = el.parentElement.clientWidth, h = el.parentElement.clientHeight;
+  // 上の余白：カメラのボタンと日付の表示（狭い画面ではボタンの下にある）に重ならないように。入りきらない分はスクロール
+  const badge = $("time-badge");
+  const top = Math.max(56, badge && badge.textContent ? badge.offsetTop + badge.offsetHeight + 8 : 0);
+  el.style.maxHeight = `${Math.max(60, h - top - 8)}px`;
+  const bh = el.offsetHeight, bw = el.offsetWidth;
+  if (h - y * h - top >= bh) {
+    // 頭の上に置く（ふつう）
+    el.classList.remove("side");
+    el.style.transform = "";
+    el.style.left = `${Math.min(0.75, Math.max(0.12, x)) * 100}%`;
+    el.style.bottom = `${Math.max(8, y * h)}px`;
+  } else {
+    // 頭の上に入りきらないとき（杜氏の近くで止まったカメラなど）は、杜氏に重ならないよう頭の横に置く
+    el.classList.add("side");
+    el.style.transform = "none";
+    const px = x * w, gap = 46;
+    const left = px < w / 2 ? px + gap : px - gap - bw;
+    el.style.left = `${Math.max(8, Math.min(w - bw - 8, left))}px`;
+    el.style.bottom = `${Math.max(8, Math.min(y * h - bh * 0.6, h - bh - top))}px`;
+  }
 };
 window.kuraOnUnityReady = () => app.resend();
 
@@ -218,6 +242,6 @@ async function main() {
 }
 
 main().catch(e => {
-  $("unity-status").textContent = e.message;
+  if ($("loader-text")) $("loader-text").textContent = e.message;
   console.error(e);
 });
