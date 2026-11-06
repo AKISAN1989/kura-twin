@@ -5,6 +5,10 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# Netlify のビルド環境の Node.js（Vite 7 は 20.19 以上が必要）
+[build.environment]
+  NODE_VERSION = "22"
+
 [functions]
   node_bundler = "esbuild"
 
