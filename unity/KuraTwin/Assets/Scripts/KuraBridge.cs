@@ -243,6 +243,8 @@ public partial class KuraBridge : MonoBehaviour
     {
         var msg = JsonUtility.FromJson<CameraMsg>(json);
         if (msg == null) return;
+        if (msg.mode == "opening") { StartOpening(); return; }
+        if (opening) return; // オープニングのあいだは、ほかの視点の指示を受けない（終われば蔵全体に落ち着く）
         guideCam = false;
         freeCam = false;
         if (msg.mode == "toji" && tanks.TryGetValue(msg.id ?? "", out var t)) SetTojiView(t);
@@ -298,6 +300,7 @@ public partial class KuraBridge : MonoBehaviour
         patrolMoving = false;
         pendingWork = false;
         AbortWork(); // 蔵人の質問の案内を優先する
+        if (opening) EndOpening();
         leanTarget = 0f;
         walking = true;
         guideCam = true;
@@ -309,6 +312,7 @@ public partial class KuraBridge : MonoBehaviour
     void UpdateToji(float dt)
     {
         if (toji == null) return;
+        if (opening) { UpdateOpeningToji(dt); return; }
         if (walking)
         {
             var to = walkTarget - toji.position; to.y = 0f;
@@ -513,6 +517,13 @@ public partial class KuraBridge : MonoBehaviour
     void HandleInput()
     {
         if (cam == null) return;
+        if (opening) { if (AnyInput()) { EndOpening(); swallowPointer = true; } return; } // オープニングは、画面に触ればすぐ飛ばす
+        if (swallowPointer)
+        {
+            // 飛ばすのに使ったクリック・タップは、離すまでほかの操作（タンクを選ぶ・回す）に使わない
+            if (Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1) || Input.touchCount > 0) return;
+            swallowPointer = false; pressing = false;
+        }
         // スマホ：1本指で回転、2本指でつまんで拡大・縮小と平行移動、軽く触れてタンクを選ぶ
         if (Input.touchCount > 0)
         {
@@ -774,12 +785,14 @@ public partial class KuraBridge : MonoBehaviour
         float kTank = Time.time < slowUntil ? 1f - Mathf.Exp(-Time.deltaTime * 1.1f) : k;
         UpdateTanks(kTank, pulse);
         UpdatePast(Time.deltaTime);
+        ApplyOpeningLight();
         UpdateToji(Time.deltaTime);
         if (fanBlades != null) fanBlades.Rotate(0f, 0f, 160f * Time.deltaTime, Space.Self); // 換気扇をゆっくり回す
 
         HandleInput();
 
-        if (cam != null)
+        if (cam != null && opening) UpdateOpening(Time.deltaTime);
+        else if (cam != null)
         {
             if (overview) SetOverview(); // 画面の大きさが変わっても全体が入るように
             float kc = k;

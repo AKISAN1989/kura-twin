@@ -44,11 +44,23 @@ html, body { margin: 0; height: 100%; background: var(--plaster); color: var(--i
 .kura-loader-card { text-align: center; color: #2b2118; }
 .kura-loader-title { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 44px; letter-spacing: .5em; margin-right: -.5em; }
 .kura-loader-sub { margin-top: 8px; font-size: 13px; letter-spacing: .15em; color: #6b5d4c; }
-.kura-loader-bar { margin: 26px auto 10px; width: min(320px, 60vw); height: 6px; border-radius: 3px; background: #d9d0c0;
-  box-shadow: inset 0 1px 2px rgba(60,40,20,.2); overflow: hidden; }
-.kura-loader-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8a5a36, #6b4429); transition: width .25s ease; }
+/* 経過簿：墨の細い罫線が引かれ、数字が1行ずつ書き込まれる */
+.ledger { display: block; margin: 24px auto 10px; width: min(330px, 78vw); height: auto; overflow: visible; }
+.ledger .rule { fill: none; stroke: #2b241d; stroke-width: .8; stroke-opacity: .75; stroke-linecap: round;
+  stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: ledger-rule .7s ease-out var(--d) forwards; }
+.ledger .rule.thick { stroke-width: 1.2; stroke-opacity: .9; }
+.ledger .rule.faint { stroke-opacity: .35; }
+@keyframes ledger-rule { to { stroke-dashoffset: 0; } }
+.ledger text { text-anchor: middle; fill: #231c15; font-size: 13px; font-family: "Klee", "Hiragino Mincho ProN", "Yu Mincho", serif; font-weight: 600; }
+.ledger .head { font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 11px; fill: #5b4d3c; font-weight: 400; letter-spacing: .05em;
+  opacity: 0; animation: ledger-fade .5s ease-out .6s forwards; }
+@keyframes ledger-fade { to { opacity: 1; } }
+/* 行：左から右へ、筆で書くように現れる */
+.ledger .ledger-row { clip-path: inset(0 100% 0 0); transition: clip-path .7s steps(14, end); }
+.ledger .ledger-row.on { clip-path: inset(0 0 0 0); }
+@media (prefers-reduced-motion: reduce) { .ledger .rule { animation-duration: .01s; } .ledger .ledger-row { transition: none; } }
 .kura-loader-text { font-size: 12px; color: #7a6c5a; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
-.kura-loader.failed .kura-loader-bar { display: none; }
+.kura-loader.failed .ledger { display: none; }
 .kura-loader.failed .kura-loader-text { color: #7d1a12; }
 .stage-tools { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
 .stage-tools button { background: rgba(251,248,242,.92); border-color: rgba(107,68,41,.25); color: var(--ink); }
@@ -338,6 +350,12 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
   .panel > * { padding-left: 14px; padding-right: 14px; }
   .tank-card, .tank-summary { margin-left: 14px; margin-right: 14px; }
-  .roles .what { font-size: 14px; }
+  .roles .what { font-size: 13.5px; white-space: nowrap; letter-spacing: 0; } /* 「経過簿を撮る」を1行に */
+  .roles .who { font-size: 13.5px; letter-spacing: .12em; }
+  /* 読み込み中の画面：狭い画面では梁を上に寄せ、経過簿を少し小さく（作品名が梁にかからないように） */
+  .kura-loader-beam { top: 3%; }
+  .kura-loader-beam::after { display: none; }
+  .kura-loader-title { font-size: 34px; }
+  .ledger { width: min(300px, 76vw); margin-top: 14px; }
   .brand h1 { font-size: 22px; letter-spacing: .25em; }
 }

@@ -22,7 +22,53 @@ function guardCanvas(canvas) {
   canvas.addEventListener("contextmenu", e => e.preventDefault());
   canvas.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
 }
+// ---------- 読み込み中の経過簿（墨の罫線と、1行ずつ書き込まれる数字） ----------
+// 架空の醪の経過（日順1〜8日目）。読み込みの割合に合わせて、上の行から書き込んでいく
+const LEDGER_HEAD = ["月日", "日順", "品温", "日本酒度", "状ぼう"];
+const LEDGER_ROWS = [
+  ["1/25", "1", "7.0", "−52", "筋泡"], ["1/26", "2", "8.2", "−40", "水泡"], ["1/27", "3", "9.5", "−30", "岩泡"],
+  ["1/28", "4", "10.8", "−22", "高泡"], ["1/29", "5", "11.6", "−15", "高泡"], ["1/30", "6", "12.0", "−9", "落泡"],
+  ["1/31", "7", "12.3", "−4", "玉泡"], ["2/1", "8", "12.1", "−1", "地"],
+];
+function buildLedger() {
+  const svg = $("loader-ledger");
+  if (!svg) return;
+  const colW = [64, 48, 60, 80, 60], W = colW.reduce((a, b) => a + b, 0), headH = 26, rowH = 23, H = headH + rowH * LEDGER_ROWS.length;
+  svg.setAttribute("viewBox", `-2 -2 ${W + 4} ${H + 4}`);
+  const xs = colW.reduce((a, w) => [...a, a[a.length - 1] + w], [0]);
+  const lines = [];
+  // 罫線：外枠と見出しの下は少し太く。縦線、横線の順に引く
+  lines.push(`<path class="rule thick" d="M0 0H${W}V${H}H0Z" style="--len:${2 * (W + H)};--d:0s"/>`);
+  xs.slice(1, -1).forEach((x, i) => lines.push(`<path class="rule" d="M${x} 0V${H}" style="--len:${H};--d:${0.15 + i * 0.08}s"/>`));
+  lines.push(`<path class="rule thick" d="M0 ${headH}H${W}" style="--len:${W};--d:.5s"/>`);
+  LEDGER_ROWS.forEach((_, i) => lines.push(`<path class="rule faint" d="M0 ${headH + rowH * (i + 1)}H${W}" style="--len:${W};--d:${0.55 + i * 0.05}s"/>`));
+  const cx = i => (xs[i] + xs[i + 1]) / 2;
+  const head = LEDGER_HEAD.map((t, i) => `<text class="head" x="${cx(i)}" y="${headH - 8}">${t}</text>`).join("");
+  const rows = LEDGER_ROWS.map((r, k) => `<g class="ledger-row" data-row="${k}">${r.map((t, i) =>
+    `<text x="${cx(i)}" y="${headH + rowH * (k + 1) - 7}">${t}</text>`).join("")}</g>`).join("");
+  svg.innerHTML = lines.join("") + head + rows;
+}
+// p：0〜1。進んだ分だけ行を書き込む（一度書いた行は消さない）
+function writeLedger(p) {
+  const rows = document.querySelectorAll("#loader-ledger .ledger-row");
+  const n = Math.min(rows.length, Math.floor(p * (rows.length + 0.5)));
+  rows.forEach((g, i) => { if (i < n) g.classList.add("on"); });
+}
+
 async function startUnity() {
+  buildLedger();
+  // ?loader=1：読み込み中の画面だけを、決まった速さで見せる（確認・動画の素材用）。3Dは読み込まない
+  if (new URLSearchParams(location.search).has("loader")) {
+    const t0 = performance.now(), dur = 6000;
+    const tick = () => {
+      const p = Math.min(1, (performance.now() - t0) / dur);
+      writeLedger(p);
+      $("loader-text").textContent = p < 0.9 ? `蔵の戸を開けています… ${Math.round(p * 100)}%` : "蔵を組み立てています…";
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    return;
+  }
   const base = "unity/Build/kura";
   const status = $("unity-status");
   const setText = t => { $("loader-text").textContent = t; };
@@ -54,14 +100,17 @@ async function startUnity() {
       productName: "KuraTwin",
       productVersion: "0.1",
     }, p => {
-      $("loader-fill").style.width = `${Math.round(p * 100)}%`;
+      writeLedger(p);
       setText(p < 0.9 ? `蔵の戸を開けています… ${Math.round(p * 100)}%` : "蔵を組み立てています…");
     });
-    // 読み込みが終わったら、ふわっと消す
-    status.classList.add("done");
-    setTimeout(() => status.remove(), 700);
+    // 3Dとつなぐのは、すぐに（Unity の「準備ができた」の知らせより前に）
     bridge.attachUnity(instance);
     guardCanvas($("unity-canvas"));
+    // 読み込みが終わったら、残りの行を書き切ってから、ふわっと消す
+    writeLedger(1);
+    await new Promise(r => setTimeout(r, 450));
+    status.classList.add("done");
+    setTimeout(() => status.remove(), 700);
   } catch (e) {
     fail(`3Dを表示できませんでした：${e.message ?? e}`);
   }
@@ -179,7 +228,23 @@ window.kuraOnPatrol = (id, step, temp) => {
     </table>`;
 };
 
-window.kuraOnUnityReady = () => { app.resend(); app.emit("unity-ready"); };
+window.kuraOnUnityReady = () => {
+  app.resend();
+  app.emit("unity-ready");
+  // オープニング（大戸が開き、杜氏が「よう来たな」）：初めて開いたときだけ。?opening=1 なら何度でも
+  const OPENING_KEY = "kura.opening.seen";
+  let seen = false;
+  try { seen = localStorage.getItem(OPENING_KEY) === "1"; } catch {}
+  if (!seen || new URLSearchParams(location.search).has("opening")) {
+    try { localStorage.setItem(OPENING_KEY, "1"); } catch {}
+    // 読み込み中の画面が消えてから始める（大戸が閉まっているところから見えるように）
+    const start = (tries = 0) => {
+      if ($("unity-status") && tries < 60) { setTimeout(() => start(tries + 1), 100); return; }
+      bridge.setCamera("opening");
+    };
+    start();
+  }
+};
 
 // ---------- 今と過去の表示（3Dの上） ----------
 // 表示している日付と「今季／過去の仕込み」。過去へ移るときは、日付がさかのぼるように数字を動かす

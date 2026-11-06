@@ -404,7 +404,7 @@ public static partial class KuraScene
     }
 
     // ---------- 部品 ----------
-    static GameObject Box(Transform parent, string name, Vector3 pos, Vector3 scale, Material mat)
+    internal static GameObject Box(Transform parent, string name, Vector3 pos, Vector3 scale, Material mat)
     {
         var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
         g.name = name;

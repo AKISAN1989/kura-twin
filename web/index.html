@@ -40,7 +40,8 @@
       <div class="kura-loader-card">
         <div class="kura-loader-title">蔵ツイン</div>
         <div class="kura-loader-sub">経過簿から、杜氏の判断を蔵に残す</div>
-        <div class="kura-loader-bar"><span id="loader-fill"></span></div>
+        <!-- 経過簿：墨の罫線を引き、読み込みの進み具合に合わせて1行ずつ書き込む（中身は main.js が作る） -->
+        <svg id="loader-ledger" class="ledger" aria-hidden="true"></svg>
         <div id="loader-text" class="kura-loader-text">蔵の戸を開けています…</div>
       </div>
     </div>
