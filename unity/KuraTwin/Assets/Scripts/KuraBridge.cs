@@ -127,7 +127,7 @@ public partial class KuraBridge : MonoBehaviour
     static readonly Color GlowSelect = new Color(0.95f, 0.88f, 0.70f); // 選択：やわらかい白
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     static readonly int BaseMapStId = Shader.PropertyToID("_BaseMap_ST");
-    static readonly Color AromaPastColor = new Color(0.95f, 0.93f, 0.86f, 0.75f); // 昨季：朝の光に合わせて白っぽく
+    static readonly Color AromaPastColor = new Color(0.95f, 0.93f, 0.86f, 0.55f); // 昨季：朝の光に合わせて白っぽく
     static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
 
     void Awake()
@@ -708,7 +708,7 @@ public partial class KuraBridge : MonoBehaviour
             float act = t.level > 0.001f ? t.activity : 0f;
             if (t.aroma != null)
             {
-                var em = t.aroma.emission; em.rateOverTime = Mathf.Pow(act, 1.5f) * 13f;
+                var em = t.aroma.emission; em.rateOverTime = Mathf.Pow(act, 1.5f) * 6.5f;
                 var main = t.aroma.main;
                 main.startSpeed = new ParticleSystem.MinMaxCurve(0.1f + 0.12f * act, 0.16f + 0.2f * act);
                 main.startColor = Color.Lerp(KuraScene.AromaColor, AromaPastColor, pastE); // 昨季（朝の光）は少し白っぽく

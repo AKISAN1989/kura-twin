@@ -339,6 +339,18 @@ public static class KuraBuild
         return new Color(1f, 1f, 1f, a);
     });
 
+    // カメラのすぐ近くの粒は薄くして消す（URP の粒子シェーダーの「カメラに近い粒を消す」）
+    static Material NearFade(Material m)
+    {
+        m.SetFloat("_CameraFadingEnabled", 1f);
+        m.SetFloat("_CameraNearFadeDistance", 0.35f);
+        m.SetFloat("_CameraFarFadeDistance", 1f);
+        m.SetVector("_CameraFadeParams", new Vector4(0.35f, 1f / (1f - 0.35f), 0, 0));
+        m.EnableKeyword("_FADING_ON");
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
     static Material Tinted(Material m, Color c) { m.SetColor("_BaseColor", c); EditorUtility.SetDirty(m); return m; }
 
     // 醪の泡：白い薄い輪と小さなつや
@@ -463,7 +475,7 @@ public static class KuraBuild
             shide = Lit("Shide", new Color(0.98f, 0.98f, 0.96f), 0.1f),
             beam = AirMat("LightBeam", SaveTex("BeamGrad", 64, (u, v) => { float a = Mathf.Pow(Mathf.Sin(Mathf.PI * u), 1.6f) * Smooth(0f, 0.08f, v) * Mathf.Pow(1f - v, 1.4f); return new Color(a, a, a, a); }), additive: true, particles: true), // 粒子用のシェーダーで描く（Unlit の半透明は描かれなかった）
             dust = AirMat("Dust", SoftDot(), additive: true, particles: true),
-            aroma = Tinted(AirMat("Aroma", SoftDot(), additive: true, particles: true), new Color(2.2f, 1.9f, 1.4f)), // 加算で少し強く光らせる（色は粒の金色）
+            aroma = NearFade(Tinted(AirMat("Aroma", SoftDot(), additive: true, particles: true), new Color(1.3f, 1.15f, 0.9f))), // 加算でほのかに光らせる（色は粒の金色）
             bubble = AirMat("Bubble", BubbleTex(), additive: false, particles: true),
         };
     }

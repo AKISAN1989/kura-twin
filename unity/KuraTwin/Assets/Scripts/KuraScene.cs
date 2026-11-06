@@ -29,7 +29,7 @@ public static partial class KuraScene
     public const float DeckHeight = PlinthHeight + TankHeight; // 足場の踏み板の上面＝タンクの縁の高さ
     public const float EyeHeight = 1.55f; // 足場に立った人の目の高さ
     public const int TankCount = 10;
-    public static readonly Color AromaColor = new Color(1f, 0.8f, 0.42f, 0.75f); // 香りの粒：淡い金色
+    public static readonly Color AromaColor = new Color(1f, 0.82f, 0.5f, 0.55f); // 香りの粒：淡い金色
 
     // web/public/data/kura.json と同じ配置：2列×5本
     public static Vector3 TankPosition(int index)
@@ -233,7 +233,7 @@ public static partial class KuraScene
             main.loop = true; main.playOnAwake = true; main.duration = 5f;
             main.startLifetime = new ParticleSystem.MinMaxCurve(3.5f, 5f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.3f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.1f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.05f); // ほのかに：小さく
             main.startColor = AromaColor;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 120;
@@ -249,6 +249,7 @@ public static partial class KuraScene
             var r = aroma.GetComponent<ParticleSystemRenderer>();
             r.sharedMaterial = p.aroma; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
             r.sortingFudge = 10f;
+            r.maxParticleSize = 0.012f; // カメラのすぐ近くを通っても、画面の上で大きな玉にならない
         }
 
         // 醪の表面の小さな泡：浮かんでふくらみ、弾けて消える（液面に寝かせて描く）
