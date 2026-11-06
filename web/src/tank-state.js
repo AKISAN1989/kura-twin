@@ -13,7 +13,7 @@ export function addedWaterLiters(record) {
 export function tankStateOn(tank, date, capacityL) {
   const recs = tank.records.filter(r => r.date <= date);
   if (recs.length === 0) {
-    return { id: tank.tank, stage: "empty", level: 0, temp: null, joubou: null, moromi_day: null, date: null };
+    return { id: tank.tank, stage: "empty", level: 0, activity: 0, temp: null, joubou: null, moromi_day: null, date: null };
   }
   const last = recs[recs.length - 1];
   const { soe_l, naka_l, tome_l } = tank.recipe;
@@ -30,10 +30,11 @@ export function tankStateOn(tank, date, capacityL) {
   }
   // 上槽の翌日以降は空
   if (last.operation === "上槽" && last.date < date) {
-    return { id: tank.tank, stage: "empty", level: 0, temp: null, joubou: null, moromi_day: null, date: last.date };
+    return { id: tank.tank, stage: "empty", level: 0, activity: 0, temp: null, joubou: null, moromi_day: null, date: last.date };
   }
   if (last.moromi_day <= 0) stage = "shikomi";
   return {
+    activity: fermentActivity(tank, last, stage, date),
     id: tank.tank,
     stage,
     level: Math.min(1, volume / capacityL),
@@ -43,6 +44,17 @@ export function tankStateOn(tank, date, capacityL) {
     date: last.date,
     fresh: last.date === date, // その日の記録があるか
   };
+}
+
+// 3Dの湯気の量（0〜1）：状ぼうから見た発酵の盛り具合。醸造の判断ではなく、見た目の演出のためだけに使う。
+// 仕込み前（留添の前）・上槽の日・上槽の3日前からは出さない
+const JOUBOU_ACTIVITY = { 筋泡: 0.35, 水泡: 0.55, 岩泡: 0.8, 高泡: 1.0, 落泡: 0.7, 玉泡: 0.5, 地: 0.3 };
+const DAY_MS = 86400000;
+export function fermentActivity(tank, last, stage, date) {
+  if (stage !== "moromi" || last.moromi_day == null || last.moromi_day < 1) return 0;
+  const press = tank.records.find(r => r.operation === "上槽");
+  if (press && (Date.parse(press.date) - Date.parse(date)) / DAY_MS <= 3) return 0;
+  return JOUBOU_ACTIVITY[last.joubou] ?? 0.4;
 }
 
 /** 季の暦：最初の初添から today（無ければ最後の記録）まで */

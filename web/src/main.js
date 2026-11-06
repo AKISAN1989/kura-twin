@@ -61,6 +61,40 @@ window.kuraOnTojiBubble = (text, x, y, visible) => {
 };
 window.kuraOnUnityReady = () => app.resend();
 
+// ---------- 今と過去の表示（3Dの上） ----------
+// 表示している日付と「今季／昨季」。過去へ移るときは、日付がさかのぼるように数字を動かす
+let badgeShown = null; // { date, past }
+let badgeTimer = null;
+const md = d => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+function badgeText(date, past) {
+  const y = date.slice(0, 4);
+  if (!app.isCurrent) return `昨季（${app.season}年 仕込み）　${y}年${md(date)}の記録`;
+  if (past) return `今季　${md(date)}の記録（判断メモ）`;
+  return `今季（${app.season}年 仕込み）　${md(date)}${date === app.seasonData.today ? "（今日）" : ""}`;
+}
+function renderTimeBadge() {
+  const el = $("time-badge");
+  const date = app.date, past = app.isPast;
+  el.classList.toggle("past", past);
+  clearInterval(badgeTimer);
+  if (!badgeShown || badgeShown.past === past || badgeShown.date === date) {
+    el.textContent = badgeText(date, past);
+    badgeShown = { date, past };
+    return;
+  }
+  // 数秒かけて、前の日付から今の日付へ数字を動かす（3D の光と液面の移り変わりと同じ長さ）
+  const from = Date.parse(badgeShown.date + "T00:00:00Z"), to = Date.parse(date + "T00:00:00Z");
+  const start = performance.now(), dur = 2600;
+  badgeShown = { date, past };
+  badgeTimer = setInterval(() => {
+    const t = Math.min(1, (performance.now() - start) / dur);
+    const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const d = new Date(from + (to - from) * e).toISOString().slice(0, 10);
+    el.textContent = t < 1 ? `${d.slice(0, 4)}年${md(d)}` : badgeText(date, past);
+    if (t >= 1) clearInterval(badgeTimer);
+  }, 50);
+}
+
 // ---------- 季・日付・タンク ----------
 function renderDay() {
   $("day-slider").max = String(app.calendar.length - 1);
@@ -110,6 +144,7 @@ function renderTankDetail() {
 /** 判断メモ：カメラを杜氏の目線に移し、その日の状態とメモを一緒に見せる */
 function showMemo(memo) {
   if (!memo) return;
+  document.querySelectorAll(".memo-dialog[open]").forEach(d => d.close());
   app.openMemo(memo);
   const tank = app.tank(memo.tank);
   const rec = tank?.records.find(r => r.date === memo.date);
@@ -124,8 +159,13 @@ function showMemo(memo) {
     ${memo.draft ? `<p class="muted">※ 作者が書いた下書きの判断メモ（架空）</p>` : ""}
     <form method="dialog"><button>閉じる</button></form>`;
   document.body.appendChild(dlg);
-  dlg.addEventListener("close", () => { dlg.remove(); bridge.setCamera("overview"); });
-  document.querySelectorAll(".memo-dialog[open]").forEach(d => d.close());
+  dlg.addEventListener("close", () => {
+    dlg.remove();
+    // 別のメモに切り替えたとき（閉じる知らせは後から届く）は、カメラも「今」も戻さない
+    if (document.querySelector(".memo-dialog[open]")) return;
+    bridge.setCamera("overview");
+    app.closeMemo();
+  });
   dlg.show(); // 3Dの杜氏の目線が見えるよう、画面全体は覆わない
 }
 
@@ -165,6 +205,7 @@ async function main() {
   app.onChange(kind => {
     if (kind === "season") $("season-select").value = app.season;
     if (kind !== "tab") renderDay();
+    if (kind !== "tab") renderTimeBadge();
   });
   initTabs();
   initToji({ showMemo });

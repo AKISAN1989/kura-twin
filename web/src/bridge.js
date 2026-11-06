@@ -27,7 +27,7 @@ export function setDay(state) {
   send("SetDay", state);
 }
 
-/** highlightTank：変化があったタンクを赤く光らせる／消す */
+/** highlightTank：変化があったタンクの縁と足元を控えめに光らせる／消す */
 export function highlightTank(tankId, on) {
   send("HighlightTank", { id: String(tankId), on: !!on });
 }
@@ -42,9 +42,12 @@ export function selectTank(tankId) {
   send("SelectTank", tankId == null ? "" : String(tankId));
 }
 
-/** tojiSay：杜氏のキャラクターの吹き出しに文章を出す（空文字で消す） */
-export function tojiSay(text) {
-  send("TojiSay", text ?? "");
+/**
+ * tojiSay：杜氏のキャラクターの吹き出しに文章を出す（空文字で消す）。
+ * tankId を渡すと、杜氏が足場を歩いてそのタンクの前まで行き、振り向いてから語る（若手の質問の根拠のタンク）。
+ */
+export function tojiSay(text, tankId = null) {
+  send("TojiSay", { text: text ?? "", tank: tankId == null ? "" : String(tankId) });
 }
 
 /** 3D側でタンクがクリックされたとき（Unity の KuraBridge.jslib から呼ばれる） */

@@ -14,6 +14,11 @@ export const app = {
   selected: null,
   highlighted: new Set(),
   tab: "toji",
+  memoView: false, // 判断メモを開いているあいだ（過去の記録を見ている）
+  lastPast: null,
+
+  /** 過去の記録を見ているか：昨季のデータ、または判断メモを開いているとき */
+  get isPast() { return !this.isCurrent || this.memoView; },
 
   get seasonData() { return store.seasons[this.season]; },
   get date() { return this.calendar[this.dayIndex]; },
@@ -52,9 +57,15 @@ export const app = {
 
   /** 3Dに、その日の液面・品温と、変化のあったタンクを送る */
   applyDay() {
+    // 今と過去が切り替わるときは、数秒かけて光と液面を当時へ戻す（時を巻き戻す演出）
+    const past = this.isPast;
+    const blend = this.lastPast !== null && past !== this.lastPast ? 3 : 0;
+    this.lastPast = past;
     bridge.setDay({
       dayIndex: this.dayIndex,
       date: this.date,
+      past,
+      blend,
       ...TEMP_RANGE,
       // Unity の JsonUtility は null を読めないので、品温が無いときは -999 を送る
       tanks: allTanksOn(this.seasonData, this.date, store.kura.tank_capacity_l)
@@ -74,9 +85,19 @@ export const app = {
 
   /** 判断メモを開く：その季・その日に移り、杜氏の目線でタンクを覗く */
   openMemo(memo) {
+    this.memoView = true;
     if (memo.season !== this.season || memo.date !== this.date) this.setSeason(memo.season, memo.date);
+    else this.applyDay();
     this.selectTank(memo.tank);
     bridge.setCamera("toji", memo.tank);
+    this.emit("memo");
+  },
+
+  /** 判断メモを閉じる：過去の表示をやめ、今の光に戻す */
+  closeMemo() {
+    if (!this.memoView) return;
+    this.memoView = false;
+    this.applyDay();
     this.emit("memo");
   },
 
@@ -85,6 +106,7 @@ export const app = {
     const hl = this.highlighted;
     this.highlighted = new Set();
     hl.forEach(id => bridge.highlightTank(id, false));
+    this.lastPast = null; // 送り直しでは演出をしない
     this.applyDay();
     bridge.selectTank(this.selected);
   },

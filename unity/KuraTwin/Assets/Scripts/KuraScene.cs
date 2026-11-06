@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 // 蔵ツイン：蔵の3Dを組み立てる（エディタで「シーンを用意」したときに呼ぶ。間接光を焼き込むため、形はシーンに保存する）。
@@ -13,6 +14,7 @@ public class KuraPalette
     public Material tag, band, glow, glowSoft, lampShade, lampBulb, windowPaper;
     public Material tojiCloth, tojiSkin, tojiTowel;
     public Material text; // 文字（TextMesh）用。奥行きで隠れる
+    public Material beam, dust, steam; // 蔵の空気：高窓からの光の筋・舞うほこり・醪の湯気
 }
 
 public static class KuraScene
@@ -63,6 +65,7 @@ public static class KuraScene
         for (int i = 0; i < TankCount; i++) BuildTank(tanksRoot, i, p, meshes, markStatic);
 
         BuildLamps(kura, p, meshes, markStatic);
+        BuildAir(kura, p, keepMesh);
         BuildToji(kura, p);
         return kura;
     }
@@ -211,6 +214,38 @@ public static class KuraScene
         var num = Text(t, "Number", id, 160, 0.026f, new Color(0.42f, 0.11f, 0.08f), p.text);
         num.transform.localPosition = new Vector3(0, baseY + TankHeight * 0.52f, -TankRadius - 0.012f);
 
+        // 醪の湯気（発酵の盛りほど少し多く。量は KuraBridge が activity で変える）
+        if (p.steam != null)
+        {
+            var steam = new GameObject("Steam");
+            steam.transform.SetParent(t, false);
+            steam.transform.localPosition = new Vector3(0, baseY + TankHeight * 0.7f, 0);
+            steam.transform.localRotation = Quaternion.Euler(-90f, 0, 0); // 上向きに出す
+            var ps = steam.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.loop = true; main.playOnAwake = true; main.duration = 5f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(4f, 6.5f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.25f, 0.45f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.6f, 1.1f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startColor = new Color(1f, 1f, 1f, 0.13f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 40;
+            var em = ps.emission; em.rateOverTime = 0f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 6f; sh.radius = TankRadius * 0.7f; // 液面から真上へ
+            var fade = ps.colorOverLifetime; fade.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.25f), new GradientAlphaKey(0.6f, 0.6f), new GradientAlphaKey(0f, 1f) });
+            fade.color = g;
+            var size = ps.sizeOverLifetime; size.enabled = true; size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.8f));
+            var noise = ps.noise; noise.enabled = true; noise.strength = 0.15f; noise.frequency = 0.3f; noise.scrollSpeed = 0.1f;
+            var r = steam.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = p.steam; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            r.sortingFudge = 10f;
+        }
+
         // 変化があったときに控えめに光る縁と足元（ふだんは消しておく）
         var rimGlow = MeshObj(t, "RimGlow", m["glowLip"], p.glow, new Vector3(0, baseY + TankHeight - 0.02f, 0));
         rimGlow.GetComponent<Renderer>().enabled = false;
@@ -249,6 +284,72 @@ public static class KuraScene
             bulb.GetComponent<Renderer>().sharedMaterial = p.lampBulb;
             markStatic(bulb);
         }
+    }
+
+    // ---------- 蔵の空気：高窓から差し込む光の筋と、筋の中に舞うほこり ----------
+    public static readonly Vector3 BeamDir = new Vector3(-0.42f, -0.55f, -0.72f).normalized;
+    static void BuildAir(Transform kura, KuraPalette p, Func<Mesh, Mesh> keepMesh)
+    {
+        if (p.beam == null) return;
+        var air = new GameObject("Air").transform;
+        air.SetParent(kura, false);
+        const float L = 11f;
+        var beamMesh = keepMesh(BeamMesh(2.3f, 1.0f, L, 1.25f, "LightBeam"));
+        for (int i = -1; i <= 1; i++)
+        {
+            var origin = new Vector3(i * 7f, 6.6f, 8.9f);
+            var beam = new GameObject("Beam");
+            beam.transform.SetParent(air, false);
+            beam.transform.localPosition = origin;
+            beam.transform.localRotation = Quaternion.LookRotation(BeamDir, Vector3.up);
+            beam.AddComponent<MeshFilter>().sharedMesh = beamMesh;
+            var mr = beam.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = p.beam; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; mr.receiveShadows = false;
+
+            if (p.dust == null) continue;
+            var dust = new GameObject("Dust");
+            dust.transform.SetParent(beam.transform, false);
+            dust.transform.localPosition = new Vector3(0, 0, L * 0.45f);
+            var ps = dust.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.loop = true; main.playOnAwake = true; main.prewarm = true; main.duration = 8f;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(7f, 11f);
+            main.startSpeed = 0f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.012f, 0.03f);
+            main.startColor = new Color(1f, 0.95f, 0.85f, 0.5f);
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.maxParticles = 70;
+            var em = ps.emission; em.rateOverTime = 7f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Box; sh.scale = new Vector3(2.0f, 0.9f, L * 0.8f);
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.3f), new GradientAlphaKey(1f, 0.7f), new GradientAlphaKey(0f, 1f) });
+            col.color = g;
+            var noise = ps.noise; noise.enabled = true; noise.strength = 0.06f; noise.frequency = 0.2f; noise.scrollSpeed = 0.05f;
+            var r = dust.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = p.dust; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+        }
+    }
+
+    // 窓の形（幅 w・高さ h）から、向き +z へ長さ L だけ伸びて少し広がる、光の筋の四角い筒（両面で描く）
+    static Mesh BeamMesh(float w, float h, float L, float spread, string name)
+    {
+        var v = new List<Vector3>(); var n = new List<Vector3>(); var uv = new List<Vector2>(); var tri = new List<int>();
+        Vector3 C(float sx, float sy, float z, float k) => new Vector3(sx * w / 2f * k, sy * h / 2f * k, z);
+        var sides = new[] { (-1f, -1f, 1f, -1f), (1f, -1f, 1f, 1f), (1f, 1f, -1f, 1f), (-1f, 1f, -1f, -1f) };
+        foreach (var (ax, ay, bx, by) in sides)
+        {
+            int s0 = v.Count;
+            v.Add(C(ax, ay, 0, 1)); v.Add(C(bx, by, 0, 1)); v.Add(C(ax, ay, L, spread)); v.Add(C(bx, by, L, spread));
+            uv.Add(new Vector2(0, 0)); uv.Add(new Vector2(1, 0)); uv.Add(new Vector2(0, 1)); uv.Add(new Vector2(1, 1));
+            for (int k = 0; k < 4; k++) n.Add(Vector3.up);
+            tri.AddRange(new[] { s0, s0 + 2, s0 + 1, s0 + 1, s0 + 2, s0 + 3 });
+        }
+        var m = Make(name, v, n, uv, tri);
+        m.SetColors(Enumerable.Repeat(Color.white, v.Count).ToList()); // 粒子用シェーダーは頂点色を掛ける
+        return m;
     }
 
     // ---------- 杜氏の仮キャラ（Tripo のモデルに差し替える予定） ----------

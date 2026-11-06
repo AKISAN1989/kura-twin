@@ -110,6 +110,22 @@ public static class KuraBuild
         return profile;
     }
 
+    static VolumeProfile EnsurePastProfile()
+    {
+        string path = RenderDir + "/KuraLookPast.asset";
+        AssetDatabase.DeleteAsset(path);
+        var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+        AssetDatabase.CreateAsset(profile, path);
+        T Add<T>() where T : VolumeComponent { var c = profile.Add<T>(true); AssetDatabase.AddObjectToAsset(c, profile); return c; }
+        var wb = Add<WhiteBalance>(); wb.temperature.Override(-7f); wb.tint.Override(-1f);
+        var color = Add<ColorAdjustments>(); color.postExposure.Override(0.85f); color.contrast.Override(4f); color.saturation.Override(-16f);
+        var lgg = Add<LiftGammaGain>(); lgg.lift.Override(new Vector4(0.98f, 1.0f, 1.03f, 0.03f));
+        var bloom = Add<Bloom>(); bloom.threshold.Override(0.9f); bloom.intensity.Override(0.5f); bloom.scatter.Override(0.7f);
+        EditorUtility.SetDirty(profile);
+        AssetDatabase.SaveAssets();
+        return profile;
+    }
+
     // ================= 質感（テクスチャと材質） =================
     static Texture2D SaveTex(string name, int size, Func<float, float, Color> f, bool normal = false, bool linear = false)
     {
@@ -226,6 +242,41 @@ public static class KuraBuild
         return m;
     }
 
+    // シェーダーの smoothstep と同じ（Unity の Mathf.SmoothStep は from〜to の補間で、意味が違う）
+    static float Smooth(float e0, float e1, float x) { float t = Mathf.Clamp01((x - e0) / (e1 - e0)); return t * t * (3f - 2f * t); }
+
+    static Texture2D SoftDot() => SaveTex("SoftDot", 64, (u, v) =>
+    {
+        float d = Mathf.Clamp01(1f - Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 0.5f)) * 2f);
+        float a = d * d * (3f - 2f * d);
+        return new Color(1f, 1f, 1f, a);
+    });
+
+    // 空気の演出の材質：光の筋（Unlit・加算・両面）、ほこり（粒子・加算）、湯気（粒子・半透明）
+    static Material AirMat(string name, Texture2D tex, bool additive, bool particles)
+    {
+        string path = $"{MatDir}/{name}.mat";
+        var shader = Shader.Find(particles ? "Universal Render Pipeline/Particles/Unlit" : "Universal Render Pipeline/Unlit");
+        var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, path); }
+        m.shader = shader;
+        m.SetTexture("_BaseMap", tex);
+        m.SetColor("_BaseColor", Color.white);
+        m.SetFloat("_Surface", 1f);
+        m.SetFloat("_Blend", additive ? 2f : 0f);
+        m.SetFloat("_SrcBlend", (float)(additive ? BlendMode.SrcAlpha : BlendMode.SrcAlpha));
+        m.SetFloat("_DstBlend", (float)(additive ? BlendMode.One : BlendMode.OneMinusSrcAlpha));
+        m.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
+        m.SetFloat("_DstBlendAlpha", (float)(additive ? BlendMode.One : BlendMode.OneMinusSrcAlpha));
+        m.SetFloat("_ZWrite", 0f);
+        m.SetFloat("_Cull", 0f); // 両面
+        m.SetOverrideTag("RenderType", "Transparent");
+        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = (int)RenderQueue.Transparent;
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
     static Material TextMat()
     {
         string path = $"{MatDir}/Text3D.mat";
@@ -286,6 +337,9 @@ public static class KuraBuild
             tojiSkin = Lit("TojiSkin", new Color(0.74f, 0.72f, 0.68f), 0.1f),
             tojiTowel = Lit("TojiTowel", new Color(0.95f, 0.95f, 0.93f), 0.1f),
             text = TextMat(),
+            beam = AirMat("LightBeam", SaveTex("BeamGrad", 64, (u, v) => { float a = Mathf.Pow(Mathf.Sin(Mathf.PI * u), 1.6f) * Smooth(0f, 0.08f, v) * Mathf.Pow(1f - v, 1.4f); return new Color(a, a, a, a); }), additive: true, particles: true), // 粒子用のシェーダーで描く（Unlit の半透明は描かれなかった）
+            dust = AirMat("Dust", SoftDot(), additive: true, particles: true),
+            steam = AirMat("Steam", SoftDot(), additive: false, particles: true),
         };
     }
 
@@ -320,6 +374,9 @@ public static class KuraBuild
         // 色調補正（ポストエフェクト）
         var vol = new GameObject("Look").AddComponent<Volume>();
         vol.isGlobal = true; vol.sharedProfile = profile;
+        // 過去の記録を見ているあいだの色（朝の少し冷たい空気）。重みは KuraBridge が 0〜1 で動かす
+        var past = new GameObject("LookPast").AddComponent<Volume>();
+        past.isGlobal = true; past.priority = 1; past.weight = 0f; past.sharedProfile = EnsurePastProfile();
 
         // 光：大戸口から入る外光（主光源）、梁から下がる電灯3つ、高窓
         var sun = new GameObject("Daylight").AddComponent<Light>();
@@ -352,6 +409,11 @@ public static class KuraBuild
         };
         var kura = KuraScene.Build(bridge.transform, palette, keep, markStatic);
         InstallToji(kura);
+        // 朝の光は奥（高窓の側）から差し込む。奥の壁と梁が光を遮らないよう、影を落とさない
+        kura.Find("Building/WallBack").GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
+        foreach (Transform t in kura.Find("Building"))
+            if (t.name == "Beam" || t.name.StartsWith("Window") || t.name == "PillarBack" || t.name == "WainscotBack" || t.name == "NageshiBack")
+                t.GetComponent<Renderer>().shadowCastingMode = ShadowCastingMode.Off;
 
         foreach (Transform lamp in kura.Find("Lamps"))
         {
@@ -404,11 +466,11 @@ public static class KuraBuild
 
     static void InstallToji(Transform kura)
     {
-        string idlePath = TojiDir + "/Toji_idle.fbx", nodPath = TojiDir + "/Toji_nod.fbx";
+        string idlePath = TojiDir + "/Toji_idle.fbx", nodPath = TojiDir + "/Toji_nod.fbx", walkPath = TojiDir + "/Toji_walk.fbx";
         if (!File.Exists(idlePath)) { Debug.Log("[Kura] 杜氏のモデルが無いので仮の人形のまま"); return; }
 
         // 取り込みの設定：Generic の骨、動きはくり返し（うなずきは1回）
-        foreach (var (path, loop) in new[] { (idlePath, true), (nodPath, true) })
+        foreach (var (path, loop) in new[] { (idlePath, true), (nodPath, true), (walkPath, true) })
         {
             if (!File.Exists(path)) continue;
             var imp = (ModelImporter)AssetImporter.GetAtPath(path);
@@ -468,6 +530,15 @@ public static class KuraBuild
         var sm = ctrl.layers[0].stateMachine;
         var sIdle = sm.AddState("Idle"); sIdle.motion = idle;
         sm.defaultState = sIdle;
+        // 歩く：案内のあいだ（Walking）。その場で足踏みする動きで、移動は KuraBridge が足場の上だけで行う
+        var walk = File.Exists(walkPath) ? AssetDatabase.LoadAllAssetsAtPath(walkPath).OfType<AnimationClip>().FirstOrDefault(c => !c.name.StartsWith("__preview__")) : null;
+        if (walk != null)
+        {
+            ctrl.AddParameter("Walking", AnimatorControllerParameterType.Bool);
+            var sWalk = sm.AddState("Walk"); sWalk.motion = walk;
+            var go = sIdle.AddTransition(sWalk); go.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0, "Walking"); go.hasExitTime = false; go.duration = 0.2f;
+            var stop = sWalk.AddTransition(sIdle); stop.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0, "Walking"); stop.hasExitTime = false; stop.duration = 0.25f;
+        }
         if (nod != null)
         {
             // うなずき：首と頭だけに効く層。体は「立って待つ」のまま。話すあいだだけ層の重みを上げる（KuraBridge）
@@ -498,7 +569,7 @@ public static class KuraBuild
         animator.runtimeAnimatorController = ctrl;
         animator.applyRootMotion = false;
         animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-        Debug.Log($"[Kura] 杜氏のモデルを組み込みました（倍率 {scale:0.000}、頭の骨 {(headBone ? headBone.name : "なし")}、動き {idle?.name} / {nod?.name}）");
+        Debug.Log($"[Kura] 杜氏のモデルを組み込みました（倍率 {scale:0.000}、頭の骨 {(headBone ? headBone.name : "なし")}、動き {idle?.name} / {nod?.name} / {walk?.name}）");
     }
 
     static void ExtractAndFixMaterials(string fbxPath)
@@ -609,6 +680,8 @@ public static class KuraBuild
         foreach (var id in new[] { "5", "6", "7" }) bridge.HighlightTank($"{{\"id\":\"{id}\",\"on\":true}}");
 
         string tag = Environment.GetEnvironmentVariable("KURA_SHOT") ?? "wip";
+        if (Environment.GetEnvironmentVariable("KURA_DEBUG_BEAM") == "1") // 光の筋の形と位置の確認用（不透明で描く）
+            foreach (Transform b in GameObject.Find("Air").transform) b.GetComponent<Renderer>().sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(MatDir + "/Glow.mat");
         Directory.CreateDirectory(ShotDir);
         // 横長（動画）とブラウザの左側（やや縦長）の2通りで全体を撮る
         foreach (var (w, h, suffix) in new[] { (1600, 900, "overview"), (1020, 860, "overview-web") })
@@ -618,6 +691,12 @@ public static class KuraBuild
             bridge.ApplyInstant();
             Shoot($"{tag}-{suffix}", w, h);
         }
+        Camera.main.aspect = 1020f / 860f;
+        bridge.PreviewCamera("overview", null);
+        bridge.PreviewPast(true);
+        bridge.ApplyInstant();
+        Shoot($"{tag}-past", 1020, 860);
+        bridge.PreviewPast(false);
         bridge.SelectTank("6");
         Camera.main.aspect = 1600f / 900f;
         bridge.PreviewCamera("toji", "6");

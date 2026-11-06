@@ -4,7 +4,8 @@
 //   node --env-file=.env scripts/tripo/toji.mjs generate   … 文章から3D（テクスチャ付き・ポリゴンを抑える）約30クレジット
 //   node --env-file=.env scripts/tripo/toji.mjs rigcheck   … 骨を入れられるか確認（無料）
 //   node --env-file=.env scripts/tripo/toji.mjs rig        … 骨入れ（人型・FBX）25クレジット
-//   node --env-file=.env scripts/tripo/toji.mjs animate    … 「立って待つ」「うなずく」を付けた FBX を Unity に置く
+//   node --env-file=.env scripts/tripo/toji.mjs animate    … 「立って待つ」「うなずく」を付けた FBX を Unity に置く（各10クレジット）
+//   node --env-file=.env scripts/tripo/toji.mjs walk       … 「歩く」（その場で足踏みする形。移動は Unity 側）10クレジット
 // タスクの番号は scripts/tripo/.state.json に残す（コミットしない）。APIキーは web/.env の TRIPO_API_KEY だけから読む。
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -96,6 +97,11 @@ if (cmd === "balance") {
     const t = await wait(task_id);
     await download(t.output.model_url, join(OUT_UNITY, `Toji_${name}.fbx`));
   }
+} else if (cmd === "walk") {
+  const { task_id } = await api("POST", "/animations/retarget", { input: state.rig, animation: "preset:biped:walk", out_format: "fbx", animate_in_place: true });
+  state.anim_walk = task_id; save();
+  const t = await wait(task_id);
+  await download(t.output.model_url, join(OUT_UNITY, "Toji_walk.fbx"));
 } else {
-  console.log("balance | generate | rigcheck | rig | animate");
+  console.log("balance | generate | rigcheck | rig | animate | walk");
 }

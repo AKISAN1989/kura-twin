@@ -29,8 +29,8 @@ async function ask() {
 
 function render(res, candidates) {
   const out = $("young-out");
-  bridge.tojiSay(res.answer);
   if (!res.found) {
+    bridge.tojiSay(res.answer); // 記録が無いときは、その場で語る
     out.innerHTML = `<div class="answer-box"><p class="toji">${esc(res.answer)}</p>
       <p class="muted">推測では答えません。${candidates.length ? "候補の記録はありましたが、質問に答える内容がありませんでした。" : "条件の近い判断メモがありませんでした。"}</p>
       ${removedHtml(res.removed)}</div>`;
@@ -56,12 +56,13 @@ function render(res, candidates) {
       bridge.setCamera("toji", s.tank);
     };
   });
-  // 3Dで、根拠のタンクを示す
+  // 3Dで、根拠のタンクを示す：当時の日付に戻し、杜氏がそのタンクの前まで歩いて語る
   const first = res.sources[0];
   if (first) {
     if (first.season !== app.season || first.date !== app.date) app.setSeason(first.season, first.date);
     app.selectTank(first.tank);
   }
+  bridge.tojiSay(res.answer, first?.tank ?? null);
 }
 
 function removedHtml(removed) {
