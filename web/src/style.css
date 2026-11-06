@@ -225,7 +225,7 @@ body.toji-mode .timeline, body.toji-mode #tank-detail, body.toji-mode #tank-summ
 .ask-done-sub { font-size: 17px; color: var(--muted); margin: 12px 0 0; }
 body.toji-mode .roles .what { font-size: 17px; }
 
-/* 若手：杜氏とのチャット */
+/* 蔵人：杜氏とのチャット */
 .chat-log { display: grid; gap: 12px; }
 .msg { display: grid; gap: 4px; max-width: 92%; }
 .msg .who { font-size: 12px; color: var(--muted); letter-spacing: .1em; }

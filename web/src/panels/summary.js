@@ -1,4 +1,4 @@
-// 4-6 タンクの要約（若手向け）：選んだタンクのその日の状態を2〜3行で。似た状況の過去の判断を1件添える。
+// 4-6 タンクの要約（蔵人向け）：選んだタンクのその日の状態を2〜3行で。似た状況の過去の判断を1件添える。
 import { app } from "../app.js";
 import { store } from "../store.js";
 import { postJson, esc, errorBox } from "../api.js";

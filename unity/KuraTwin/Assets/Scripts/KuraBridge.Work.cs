@@ -96,7 +96,7 @@ public partial class KuraBridge
 
     string TempText() => workTank != null && workTank.temp > -100f ? workTank.temp.ToString("0.0", CultureInfo.InvariantCulture) + "℃" : "";
 
-    /// <summary>案内（若手の質問）が来たら、作業をやめて道具をしまう</summary>
+    /// <summary>案内（蔵人の質問）が来たら、作業をやめて道具をしまう</summary>
     void AbortWork()
     {
         if (!Working) return;

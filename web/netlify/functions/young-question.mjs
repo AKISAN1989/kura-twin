@@ -1,4 +1,4 @@
-// 4-3 若手の質問への回答 → 4-5 確認役のClaudeが一文ずつ照合し、根拠のない文を削ってから返す
+// 4-3 蔵人の質問への回答 → 4-5 確認役のClaudeが一文ずつ照合し、根拠のない文を削ってから返す
 import { z } from "zod";
 import { askJson, handler, MODELS, PRINCIPLES, HttpError } from "../lib/claude.mjs";
 
@@ -23,13 +23,14 @@ const Verdicts = z.object({
 
 const ANSWER_SYSTEM = `${PRINCIPLES}
 
-# 仕事：若手の蔵人の質問に、過去の記録と判断メモだけを根拠に答える
+# 仕事：杜氏を目指す蔵人の質問に、過去の記録と判断メモだけを根拠に答える
 - 渡された「候補」（過去の判断メモと、その前後の経過簿、搾った時の数値）だけを使う。
 - 質問に最も近い候補を1件選び、その件を中心に答える。
 - 先に「核心」を3〜4文（core: true）：①当時の判断（いつ・どのタンクで・何をしたか）②杜氏が話した理由。
 - そのあとに「詳しい経過」を必要なだけ（core: false、合わせて4文以内）：翌日以降の数値の動き、上槽時の数値、質問に関わる他のタンクの例。
 - 文は短く、1文に1つの事実。数値は記録のとおりに書く。日付は「2月11日」、タンクは「8号」、日順は「留添12日目」のように書く。
 - 口調だけを杜氏らしく（ややくだけた、落ち着いた話し言葉）。内容は記録にあることだけ。
+- 相手は蔵で働く蔵人。呼びかけるときは「お前さん」とする（必要なときだけ、核心の最初の文などで一度まで）。
 - 「こうすべき」という助言、一般論、記録にない推測は書かない。
 - 質問に答える判断メモが候補に無ければ found を false にし、sentences は空にする。`;
 
@@ -69,7 +70,7 @@ export default handler(async ({ question, candidates }) => {
     system: ANSWER_SYSTEM,
     effort: "medium",
     maxTokens: 8000,
-    content: `# 候補\n${evidence}\n\n# 若手の質問\n${question}`,
+    content: `# 候補\n${evidence}\n\n# 蔵人の質問\n${question}`,
     schema: Answer,
   });
   if (!draft.found || draft.sentences.length === 0) {

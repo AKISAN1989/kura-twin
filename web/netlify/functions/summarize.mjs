@@ -1,4 +1,4 @@
-// 4-6 タンクの要約（若手向け）：その日の状態を2〜3行の事実で書く
+// 4-6 タンクの要約（蔵人向け）：その日の状態を2〜3行の事実で書く
 import { z } from "zod";
 import { askJson, handler, MODELS, PRINCIPLES, HttpError } from "../lib/claude.mjs";
 

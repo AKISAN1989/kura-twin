@@ -7,7 +7,7 @@ const RULE_WORDS = {
   temp_change: ["品温", "温度", "冷や", "下げ", "上げ", "暖気"],
 };
 
-/** 若手の質問文から、日順と変化の種類を拾う（例：「醪12日目に日本酒度の動きが鈍った」→ day 12, stall） */
+/** 蔵人の質問文から、日順と変化の種類を拾う（例：「醪12日目に日本酒度の動きが鈍った」→ day 12, stall） */
 export function parseQuestion(text) {
   const m = text.match(/(\d+)\s*日目/) || text.match(/日順\s*(\d+)/);
   const day = m ? Number(m[1]) : null;

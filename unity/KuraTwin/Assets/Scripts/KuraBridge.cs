@@ -57,7 +57,7 @@ public partial class KuraBridge : MonoBehaviour
     Animator tojiAnimator;
     float nodUntil;
 
-    // 杜氏の案内：足場の上を歩いて根拠のタンクの前へ行き、若手（カメラ）へ振り向いて語る
+    // 杜氏の案内：足場の上を歩いて根拠のタンクの前へ行き、蔵人（カメラ）へ振り向いて語る
     Transform toji;
     bool walking, guideCam;
     Vector3 walkTarget, arriveCamPos, arriveLookAt;
@@ -68,7 +68,7 @@ public partial class KuraBridge : MonoBehaviour
     const float StandZ = 0.3f;                     // 足場の中心からタンク側へ寄る量（手すりは ±0.66）
 
     // ふだんの見回り：足場をゆっくり歩き、変化のあったタンクの前で立ち止まって、少し前かがみで中を覗き込む。
-    // 若手の質問の案内（guiding）と、話しているあいだは止める。カメラは動かさない
+    // 蔵人の質問の案内（guiding）と、話しているあいだは止める。カメラは動かさない
     bool guiding, patrolMoving, patrolPeek;
     Vector3 patrolTarget;
     Quaternion patrolFace;
@@ -297,7 +297,7 @@ public partial class KuraBridge : MonoBehaviour
         guiding = true;
         patrolMoving = false;
         pendingWork = false;
-        AbortWork(); // 若手の質問の案内を優先する
+        AbortWork(); // 蔵人の質問の案内を優先する
         leanTarget = 0f;
         walking = true;
         guideCam = true;
@@ -334,7 +334,7 @@ public partial class KuraBridge : MonoBehaviour
         }
         else if (guiding)
         {
-            // 着いたら若手（カメラ）の方へ振り向いて語る。語り終えたら少し間をおいて見回りに戻る
+            // 着いたら蔵人（カメラ）の方へ振り向いて語る。語り終えたら少し間をおいて見回りに戻る
             if (cam != null)
             {
                 var look = cam.transform.position - toji.position; look.y = 0f;

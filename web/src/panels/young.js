@@ -1,4 +1,4 @@
-// フローC：若手の質問。候補の抽出はプログラム、回答（4-3）と照合（4-5）は Claude。
+// フローC：蔵人の質問。候補の抽出はプログラム、回答（4-3）と照合（4-5）は Claude。
 // 杜氏とのチャットの見た目で、いちばん新しい答えを左の3Dの杜氏が語る（根拠のタンクまで歩いて案内する）。
 import { app } from "../app.js";
 import { store } from "../store.js";
@@ -82,9 +82,9 @@ function answerHtml(item, i) {
 
 function render() {
   const out = $("young-out");
-  const greet = tojiMsg(`<div class="text">昔の判断メモと経過簿だけを見て答える。記録にないことは言わんぞ。</div>`);
+  const greet = tojiMsg(`<div class="text">お前さんの問いには、昔の判断メモと経過簿だけを見て答える。記録にないことは言わんぞ。</div>`);
   out.innerHTML = greet + log.map((item, i) =>
-    `<div class="msg me"><span class="who">若手</span><div class="text">${esc(item.q)}</div></div>${answerHtml(item, i)}`).join("");
+    `<div class="msg me"><span class="who">蔵人</span><div class="text">${esc(item.q)}</div></div>${answerHtml(item, i)}`).join("");
   // 例の質問：はじめての人が迷わないように（まだ何も聞いていないときだけ）
   $("young-suggest").innerHTML = log.length ? "" : SUGGEST.map(q => `<button type="button">${esc(q)}</button>`).join("");
   $("young-suggest").querySelectorAll("button").forEach(b => { b.onclick = () => ask(b.textContent); });

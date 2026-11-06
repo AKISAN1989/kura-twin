@@ -50,7 +50,7 @@ test("不自然な数値に印をつける", () => {
   assert.deepEqual(insaneFields({ temp: 11.5, alcohol: null }, rules), []);
 });
 
-test("若手の質問から日順と変化の種類を拾い、近い判断メモを探す", () => {
+test("蔵人の質問から日順と変化の種類を拾い、近い判断メモを探す", () => {
   const q = parseQuestion("醪12日目に日本酒度の動きが鈍ったとき、杜氏はどうしてた？");
   assert.equal(q.day, 12);
   assert.ok(q.rules.includes("stall"));
