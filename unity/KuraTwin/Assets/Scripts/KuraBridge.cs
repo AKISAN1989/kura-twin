@@ -114,9 +114,9 @@ public partial class KuraBridge : MonoBehaviour
     MaterialPropertyBlock mpb;
     bool ready;
 
-    static readonly Color BandNeutral = new Color(0.55f, 0.55f, 0.53f);
-    static readonly Color BandCool = new Color(0.22f, 0.4f, 0.62f);    // 低い品温：くすんだ藍
-    static readonly Color BandWarm = new Color(0.86f, 0.42f, 0.16f);   // 高い品温：くすんだ柿色
+    static readonly Color BandNeutral = new Color(0.82f, 0.81f, 0.77f); // 温度が無い：生成り
+    static readonly Color BandCool = new Color(0.42f, 0.66f, 0.92f);   // 低い品温：明るい藍（緑の胴の上で見えるように）
+    static readonly Color BandWarm = new Color(1.0f, 0.56f, 0.22f);    // 高い品温：柿色
     static readonly Color GlowAlert = new Color(1.0f, 0.42f, 0.1f);    // 変化あり：灯りの色
     static readonly Color GlowSelect = new Color(0.95f, 0.88f, 0.70f); // 選択：やわらかい白
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");

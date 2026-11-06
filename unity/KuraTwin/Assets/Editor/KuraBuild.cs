@@ -391,7 +391,10 @@ public static class KuraBuild
 
         return new KuraPalette
         {
-            enamel = Lit("Enamel", new Color(0.93f, 0.925f, 0.9f), 0.82f, 0f, null, enamelN, new Vector2(2, 1), 0.4f),
+            // 琺瑯タンク：外はくすんだ深緑（つやは控えめ）、内は白
+            enamel = Lit("Enamel", new Color(0.23f, 0.3f, 0.26f), 0.45f, 0f, null, enamelN, new Vector2(2, 1), 0.4f),
+            enamelRim = Lit("EnamelRim", new Color(0.27f, 0.34f, 0.3f), 0.5f),
+            enamelHoop = Lit("EnamelHoop", new Color(0.16f, 0.21f, 0.18f), 0.4f),
             enamelInner = Lit("EnamelInner", new Color(0.9f, 0.9f, 0.88f), 0.75f),
             lip = Lit("EnamelLip", new Color(0.86f, 0.86f, 0.84f), 0.7f, 0.15f),
             plinth = Lit("Plinth", new Color(0.6f, 0.59f, 0.57f), 0.15f, 0f, concrete, concreteN, new Vector2(1, 1)),
@@ -403,7 +406,7 @@ public static class KuraBuild
             steel = Lit("Steel", new Color(0.42f, 0.43f, 0.44f), 0.5f, 0.75f),
             plank = Lit("Plank", new Color(0.55f, 0.42f, 0.29f), 0.25f, 0f, wood, woodN, new Vector2(4, 0.3f)),
             tag = Lit("Tag", new Color(0.8f, 0.7f, 0.52f), 0.2f, 0f, wood, woodN, new Vector2(0.3f, 0.3f)),
-            band = Lit("TempBand", new Color(0.55f, 0.55f, 0.53f), 0.55f),
+            band = Lit("TempBand", new Color(0.82f, 0.81f, 0.77f), 0.4f),
             glow = Emissive("Glow", new Color(0.2f, 0.12f, 0.05f), new Color(1f, 0.55f, 0.18f) * 2f, false),
             glowSoft = SoftGlow("GlowSoft", ringTex),
             lampShade = Lit("LampShade", new Color(0.18f, 0.24f, 0.2f), 0.6f, 0.2f),

@@ -9,7 +9,7 @@ using UnityEngine;
 [Serializable]
 public class KuraPalette
 {
-    public Material enamel, enamelInner, lip, plinth, liquid;
+    public Material enamel, enamelInner, enamelRim, enamelHoop, lip, plinth, liquid;
     public Material plaster, wood, woodDark, concrete, steel, plank;
     public Material tag, band, glow, glowSoft, lampShade, lampBulb, windowPaper;
     public Material tojiCloth, tojiSkin, tojiTowel;
@@ -186,9 +186,9 @@ public static partial class KuraScene
         shell.AddComponent<TankClickTarget>().tankId = id;
         markStatic(MeshObj(shell.transform, "Inner", m["shellInner"], p.enamelInner, Vector3.zero));
         markStatic(MeshObj(shell.transform, "Bottom", m["shellBottom"], p.enamelInner, Vector3.zero));
-        markStatic(MeshObj(shell.transform, "Lip", m["lip"], p.lip, new Vector3(0, TankHeight, 0)));
+        markStatic(MeshObj(shell.transform, "Lip", m["lip"], p.enamelRim, new Vector3(0, TankHeight, 0)));
         // 胴の補強の帯（琺瑯タンクらしさ）
-        var hoop = MeshObj(shell.transform, "Hoop", m["band"], p.lip, new Vector3(0, 0.35f, 0));
+        var hoop = MeshObj(shell.transform, "Hoop", m["band"], p.enamelHoop, new Vector3(0, 0.35f, 0));
         hoop.transform.localScale = new Vector3(1.004f, 1.1f, 1.004f);
         markStatic(hoop);
 
@@ -201,7 +201,8 @@ public static partial class KuraScene
         SetLiquid(liquid.transform, 0.7f);
 
         // 品温：縁の下の細い帯と、温度の札（色は控えめ）
-        MeshObj(t, "Band", m["band"], p.band, new Vector3(0, baseY + TankHeight - 0.22f, 0));
+        var band = MeshObj(t, "Band", m["band"], p.band, new Vector3(0, baseY + TankHeight - 0.24f, 0));
+        band.transform.localScale = new Vector3(1f, 1.6f, 1f); // 緑の胴の上でも見える太さ
         var tag = new GameObject("Tag").transform;
         tag.SetParent(t, false);
         float a = -118f * Mathf.Deg2Rad; // 正面（-z）から少し左
@@ -213,8 +214,8 @@ public static partial class KuraScene
         tt.transform.localPosition = new Vector3(0, -0.01f, 0.012f);
         tt.transform.localRotation = Quaternion.Euler(0, 180f, 0);
 
-        // 番号（胴に描いた字）
-        var num = Text(t, "Number", id, 160, 0.026f, new Color(0.42f, 0.11f, 0.08f), p.text);
+        // 番号（胴に白で大きく描いた字）
+        var num = Text(t, "Number", id, 160, 0.036f, new Color(0.95f, 0.94f, 0.9f), p.text);
         num.transform.localPosition = new Vector3(0, baseY + TankHeight * 0.52f, -TankRadius - 0.012f);
 
         // 醪の湯気（発酵の盛りほど少し多く。量は KuraBridge が activity で変える）
