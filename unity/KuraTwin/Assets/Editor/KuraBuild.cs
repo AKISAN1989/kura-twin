@@ -245,6 +245,82 @@ public static class KuraBuild
     // シェーダーの smoothstep と同じ（Unity の Mathf.SmoothStep は from〜to の補間で、意味が違う）
     static float Smooth(float e0, float e1, float x) { float t = Mathf.Clamp01((x - e0) / (e1 - e0)); return t * t * (3f - 2f * t); }
 
+    // 手書き風の線：日本語の字の代わりに、行ごとの筆の線（札は縦書き、黒板は横書きと罫線）
+    static Texture2D Scribble(string name, Color paper, Color ink, int lines, bool vertical, bool grid)
+    {
+        const int S = 256;
+        var rng = new System.Random(name.GetHashCode());
+        var px = new Color[S * S];
+        for (int i = 0; i < px.Length; i++) px[i] = paper;
+        void Dot(float x, float y, float r, float a)
+        {
+            for (int dy = -2; dy <= 2; dy++)
+                for (int dx = -2; dx <= 2; dx++)
+                {
+                    int X = Mathf.RoundToInt(x) + dx, Y = Mathf.RoundToInt(y) + dy;
+                    if (X < 0 || Y < 0 || X >= S || Y >= S) continue;
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    if (d > r) continue;
+                    var c = px[Y * S + X]; px[Y * S + X] = Color.Lerp(c, ink, a * (1f - d / (r + 0.5f)));
+                }
+        }
+        if (grid)
+            for (int k = 1; k < 6; k++)
+                for (int x = 6; x < S - 6; x++) Dot(x, S - 26 - k * 40 + 18, 0.8f, 0.35f);
+        for (int l = 0; l < lines; l++)
+        {
+            // 1行の中に、字のかたまりを数個
+            float baseCoord = vertical ? S - 40 - l * (S - 60f) / lines : S - 40 - l * 40f;
+            float pos = vertical ? 30 : (grid ? 70 : 20);
+            int chars = rng.Next(4, 8);
+            for (int c = 0; c < chars; c++)
+            {
+                float cx = pos, size = 14 + (float)rng.NextDouble() * 6;
+                int strokes = rng.Next(2, 5);
+                for (int s = 0; s < strokes; s++)
+                {
+                    float x0 = (float)rng.NextDouble() * size, y0 = (float)rng.NextDouble() * size;
+                    float x1 = (float)rng.NextDouble() * size, y1 = (float)rng.NextDouble() * size;
+                    for (float t = 0; t <= 1f; t += 0.03f)
+                    {
+                        float x = Mathf.Lerp(x0, x1, t), y = Mathf.Lerp(y0, y1, t) + Mathf.Sin(t * 3f) * 1.5f;
+                        if (vertical) Dot(baseCoord - 8 + x * 0.8f, S - 24 - cx - y, 1.4f, 0.9f);
+                        else Dot(cx + x, baseCoord - y, 1.3f, 0.85f);
+                    }
+                }
+                pos += size + 6;
+                if (pos > S - 30) break;
+            }
+        }
+        var t2 = new Texture2D(S, S, TextureFormat.RGBA32, false);
+        t2.SetPixels(px); t2.Apply();
+        string path = $"{TexDir}/{name}.png";
+        File.WriteAllBytes(path, t2.EncodeToPNG());
+        UnityEngine.Object.DestroyImmediate(t2);
+        AssetDatabase.ImportAsset(path);
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
+
+    static Material TwoSided(Material m) { m.SetFloat("_Cull", 0f); EditorUtility.SetDirty(m); return m; }
+
+    // 床の水の跡：濡れて暗く、つやのある半透明
+    static Material WetMat(Texture2D blob)
+    {
+        var m = Lit("WetFloor", new Color(0.13f, 0.12f, 0.11f, 0.78f), 0.95f, 0f, blob);
+        m.SetFloat("_Surface", 1f);
+        m.SetFloat("_Blend", 0f);
+        m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+        m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+        m.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
+        m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
+        m.SetFloat("_ZWrite", 0f);
+        m.SetOverrideTag("RenderType", "Transparent");
+        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = (int)RenderQueue.Transparent - 10;
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
     static Texture2D SoftDot() => SaveTex("SoftDot", 64, (u, v) =>
     {
         float d = Mathf.Clamp01(1f - Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 0.5f)) * 2f);
@@ -337,6 +413,27 @@ public static class KuraBuild
             tojiSkin = Lit("TojiSkin", new Color(0.74f, 0.72f, 0.68f), 0.1f),
             tojiTowel = Lit("TojiTowel", new Color(0.95f, 0.95f, 0.93f), 0.1f),
             text = TextMat(),
+            hose = Lit("Hose", new Color(0.16f, 0.3f, 0.22f), 0.55f),
+            cloth = TwoSided(Lit("CoverCloth", new Color(0.9f, 0.88f, 0.83f), 0.08f, 0f, plaster, plasterN, new Vector2(2, 2), 0.8f)),
+            vinyl = TwoSided(Lit("CoverVinyl", new Color(0.62f, 0.72f, 0.78f), 0.8f, 0.05f)),
+            paperTag = Lit("PaperTag", Color.white, 0.1f, 0f, Scribble("PaperScribble", new Color(0.97f, 0.95f, 0.9f), new Color(0.12f, 0.1f, 0.12f), 5, vertical: true, grid: false)),
+            blackboard = Lit("Blackboard", Color.white, 0.18f, 0f, Scribble("ChalkScribble", new Color(0.12f, 0.17f, 0.15f), new Color(0.88f, 0.88f, 0.84f), 5, vertical: false, grid: true)),
+            wet = WetMat(SaveTex("WetBlob", 128, (u, v) =>
+            {
+                float d = Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 0.5f)) * 2f + (Fbm(u, v, 4, 31, 3) - 0.5f) * 0.9f;
+                float a = 1f - Smooth(0.55f, 1f, d);
+                return new Color(1, 1, 1, a);
+            })),
+            grating = Lit("Grating", new Color(0.3f, 0.3f, 0.31f), 0.45f, 0.7f, SaveTex("GratingTex", 128, (u, v) =>
+            {
+                float bar = Mathf.Abs(Mathf.Sin(u * Mathf.PI * 16f));
+                float g = bar > 0.35f ? 0.75f : 0.08f;
+                return new Color(g, g, g, 1);
+            }), null, new Vector2(60, 1)),
+            hinoki = Lit("Hinoki", new Color(0.86f, 0.74f, 0.55f), 0.3f, 0f, wood, woodN, new Vector2(1, 1)),
+            sakaki = Lit("Sakaki", new Color(0.15f, 0.32f, 0.16f), 0.4f),
+            straw = Lit("Straw", new Color(0.78f, 0.68f, 0.42f), 0.15f),
+            shide = Lit("Shide", new Color(0.98f, 0.98f, 0.96f), 0.1f),
             beam = AirMat("LightBeam", SaveTex("BeamGrad", 64, (u, v) => { float a = Mathf.Pow(Mathf.Sin(Mathf.PI * u), 1.6f) * Smooth(0f, 0.08f, v) * Mathf.Pow(1f - v, 1.4f); return new Color(a, a, a, a); }), additive: true, particles: true), // 粒子用のシェーダーで描く（Unlit の半透明は描かれなかった）
             dust = AirMat("Dust", SoftDot(), additive: true, particles: true),
             steam = AirMat("Steam", SoftDot(), additive: false, particles: true),

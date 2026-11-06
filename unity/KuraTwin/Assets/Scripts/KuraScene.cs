@@ -15,9 +15,11 @@ public class KuraPalette
     public Material tojiCloth, tojiSkin, tojiTowel;
     public Material text; // 文字（TextMesh）用。奥行きで隠れる
     public Material beam, dust, steam; // 蔵の空気：高窓からの光の筋・舞うほこり・醪の湯気
+    // 酒蔵の現場らしさ：ホース・覆い（布とビニール）・手書きの札・黒板・床の水の跡・排水の溝・神棚
+    public Material hose, cloth, vinyl, paperTag, blackboard, wet, grating, hinoki, sakaki, straw, shide;
 }
 
-public static class KuraScene
+public static partial class KuraScene
 {
     public const float TankRadius = 1.0f;
     // 実際の仕込みタンクに近い大きさ：直径2m・高さ3m（人の背丈よりずっと高い）。蔵人は縁と同じ高さの足場から作業する
@@ -66,6 +68,7 @@ public static class KuraScene
 
         BuildLamps(kura, p, meshes, markStatic);
         BuildAir(kura, p, keepMesh);
+        BuildProps(kura, p, keepMesh, markStatic);
         BuildToji(kura, p);
         return kura;
     }

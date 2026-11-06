@@ -43,6 +43,7 @@ public class KuraBridge : MonoBehaviour
         public bool highlighted, selected;
         public float glow; // 0〜1（ふわっと点く）
         public ParticleSystem steam;
+        public GameObject cover; // 空のタンクにかける覆い
         public float targetActivity, activity; // 湯気の量（0〜1）
     }
 
@@ -78,6 +79,7 @@ public class KuraBridge : MonoBehaviour
     Light sun;
     Light[] lamps = new Light[0];
     Renderer[] beams = new Renderer[0];
+    Transform fanBlades;
     Volume pastLook;
     Quaternion sunNowRot;
     Color sunNowColor, ambSky, ambEq, ambGround;
@@ -145,6 +147,7 @@ public class KuraBridge : MonoBehaviour
                 tag = r.Find("Tag").gameObject,
                 tagText = r.Find("Tag/TagText").GetComponent<TextMesh>(),
                 steam = r.Find("Steam")?.GetComponent<ParticleSystem>(),
+                cover = r.Find("Cover")?.gameObject,
             };
             t.tag.SetActive(false);
             tanks[id] = t;
@@ -153,6 +156,7 @@ public class KuraBridge : MonoBehaviour
         tojiHead = FindDeep(kura.Find("Toji"), "HeadAnchor") ?? kura.Find("Toji/Head");
         tojiAnimator = kura.Find("Toji")?.GetComponentInChildren<Animator>();
         toji = kura.Find("Toji");
+        fanBlades = FindDeep(kura.Find("Props"), "FanBlades");
         sun = GameObject.Find("Daylight")?.GetComponent<Light>();
         if (sun != null) { sunNowRot = sun.transform.rotation; sunNowColor = sun.color; sunNowIntensity = sun.intensity; }
         lamps = kura.Find("Lamps") != null ? kura.Find("Lamps").GetComponentsInChildren<Light>() : new Light[0];
@@ -176,6 +180,7 @@ public class KuraBridge : MonoBehaviour
             if (!tanks.TryGetValue(s.id, out var t)) continue;
             t.targetLevel = Mathf.Clamp01(s.level);
             t.targetActivity = s.level > 0.001f ? Mathf.Clamp01(s.activity) : 0f;
+            if (t.cover != null) t.cover.SetActive(s.level <= 0.001f); // 仕込み前・上槽のあとのタンクには覆いをかける
             t.temp = s.temp;
             t.targetBand = BandColor(s.temp, day.tempMin, day.tempMax);
             bool has = s.temp > -100f && s.level > 0.001f;
@@ -435,18 +440,47 @@ public class KuraBridge : MonoBehaviour
     {
         overview = true;
         targetFov = 40f;
-        // 蔵の前から見下ろす。横は10本＋足場が入る距離まで引き、縦は手前の床が画面の下端ぎりぎりに来るように置く
-        // （縦長の画面でも手前の空いた床が間延びしない）
+        // 蔵の入口（手前の右寄り）に立った人の目線に近い、斜め横からの低めの角度。
+        // 奥の壁（神棚・黒板・櫂）と床（水の跡・ホース）が自然に見え、タンク10本と杜氏が画面に収まる距離まで引く
         float aspect = cam != null ? cam.aspect : 1.6f;
-        float vfov = (cam != null ? cam.fieldOfView : 40f) * Mathf.Deg2Rad;
-        float hfov = 2f * Mathf.Atan(Mathf.Tan(vfov / 2f) * aspect);
-        float pitch = Mathf.Lerp(47f, 36f, Mathf.InverseLerp(1.1f, 1.9f, aspect)) * Mathf.Deg2Rad; // 縦長ほど上から
-        float axial = Mathf.Max(11f, 8.6f / Mathf.Tan(hfov / 2f)); // 手前の列までの、視線方向の距離
-        float bottomRay = pitch + vfov / 2f * 0.86f;               // 画面の下端より少し内側を通る視線
-        var floorFront = new Vector3(-0.3f, 0f, -3.5f);            // 手前の列のすぐ前の床
-        float t = axial / Mathf.Cos(bottomRay - pitch);
-        camTargetPos = floorFront + new Vector3(0, Mathf.Sin(bottomRay), -Mathf.Cos(bottomRay)) * t;
-        camLookAt = camTargetPos + new Vector3(0, -Mathf.Sin(pitch), Mathf.Cos(pitch)) * 12f;
+        float pitch = Mathf.Lerp(24f, 17f, Mathf.InverseLerp(1.1f, 1.9f, aspect)); // 縦長の画面ほど少し上から
+        const float yaw = -24f;                                                     // 右手前から斜めに見る
+        camLookAt = new Vector3(-0.6f, 2.3f, 1.8f);
+        var dir = Quaternion.Euler(pitch, yaw, 0f) * Vector3.back;
+        float lo = 8f, hi = 34f;
+        for (int i = 0; i < 18; i++) { float mid = (lo + hi) / 2f; if (FitsOverview(camLookAt + dir * mid, aspect)) hi = mid; else lo = mid; }
+        camTargetPos = Clamp(camLookAt + dir * hi, CamMin, CamMax);
+    }
+
+    // タンク10本（足元から縁まで）と杜氏の頭が、画面の内側に入るか
+    static readonly List<Vector3> OverviewPoints = BuildOverviewPoints();
+    static List<Vector3> BuildOverviewPoints()
+    {
+        var pts = new List<Vector3>();
+        for (int i = 0; i < KuraScene.TankCount; i++)
+        {
+            var c = KuraScene.TankPosition(i);
+            foreach (var y in new[] { 0f, KuraScene.DeckHeight + 0.1f })
+                foreach (var d in new[] { Vector3.left, Vector3.right, Vector3.forward, Vector3.back })
+                    pts.Add(c + d * (KuraScene.TankRadius + 0.15f) + Vector3.up * y);
+        }
+        pts.Add(new Vector3(-7.4f, KuraScene.DeckHeight + 1.8f, 0.1f)); // 杜氏の頭（足場の左端）
+        pts.Add(new Vector3(-7.4f, KuraScene.DeckHeight, 0.1f));
+        return pts;
+    }
+
+    bool FitsOverview(Vector3 pos, float aspect)
+    {
+        var rot = Quaternion.LookRotation(camLookAt - pos);
+        float tanV = Mathf.Tan(targetFov * Mathf.Deg2Rad / 2f), tanH = tanV * aspect;
+        foreach (var p in OverviewPoints)
+        {
+            var v = Quaternion.Inverse(rot) * (p - pos);
+            if (v.z <= 0.1f) return false;
+            float x = v.x / (v.z * tanH), y = v.y / (v.z * tanV);
+            if (x < -0.94f || x > 0.94f || y < -0.9f || y > 0.78f) return false; // 上は日付の表示のぶん余白を広めに
+        }
+        return true;
     }
 
     void SetTojiView(Tank t)
@@ -557,6 +591,7 @@ public class KuraBridge : MonoBehaviour
         UpdateTanks(kTank, pulse);
         UpdatePast(Time.deltaTime);
         UpdateToji(Time.deltaTime);
+        if (fanBlades != null) fanBlades.Rotate(0f, 0f, 160f * Time.deltaTime, Space.Self); // 換気扇をゆっくり回す
 
         HandleInput();
 
