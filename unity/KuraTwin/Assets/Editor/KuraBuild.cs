@@ -208,6 +208,17 @@ public static class KuraBuild
         return m;
     }
 
+    // 品温の帯：色は実行時に変える。過去の画面では少し光らせるので、発光を黒で用意しておく
+    static Material BandMat()
+    {
+        var m = Lit("TempBand", new Color(0.82f, 0.81f, 0.77f), 0.4f);
+        m.EnableKeyword("_EMISSION");
+        m.SetColor("_EmissionColor", Color.black);
+        m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
     static Material Emissive(string name, Color baseColor, Color emission, bool bakeGI)
     {
         var m = Lit(name, baseColor, 0.2f);
@@ -406,7 +417,7 @@ public static class KuraBuild
             steel = Lit("Steel", new Color(0.42f, 0.43f, 0.44f), 0.5f, 0.75f),
             plank = Lit("Plank", new Color(0.55f, 0.42f, 0.29f), 0.25f, 0f, wood, woodN, new Vector2(4, 0.3f)),
             tag = Lit("Tag", new Color(0.8f, 0.7f, 0.52f), 0.2f, 0f, wood, woodN, new Vector2(0.3f, 0.3f)),
-            band = Lit("TempBand", new Color(0.82f, 0.81f, 0.77f), 0.4f),
+            band = BandMat(),
             glow = Emissive("Glow", new Color(0.2f, 0.12f, 0.05f), new Color(1f, 0.55f, 0.18f) * 2f, false),
             glowSoft = SoftGlow("GlowSoft", ringTex),
             lampShade = Lit("LampShade", new Color(0.18f, 0.24f, 0.2f), 0.6f, 0.2f),

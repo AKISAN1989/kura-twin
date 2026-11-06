@@ -99,6 +99,10 @@ public partial class KuraBridge : MonoBehaviour
     Color sunNowColor, ambSky, ambEq, ambGround;
     float sunNowIntensity, lampNowIntensity = 1f;
     float pastTarget, pastBlend, slowUntil;
+    // 過去（朝の青い光）では緑の琺瑯が黒く沈むので、タンクの緑を明るくし、品温の帯を少し光らせる
+    Material[] tankMats = new Material[0];
+    Color[] tankMatNow = new Color[0];
+    float pastE;
     static readonly Quaternion SunMorningRot = Quaternion.Euler(30f, 238f, 0f); // 右奥（高窓の側）から、斜めに低く差し込む
     static readonly Color SunMorningColor = new Color(0.95f, 0.97f, 1.0f);
 
@@ -166,6 +170,18 @@ public partial class KuraBridge : MonoBehaviour
             t.tag.SetActive(false);
             tanks[id] = t;
         }
+        // タンクの胴・縁・補強の帯の材質を、この実行だけの写しに差し替える（過去の明るさを変えても元の材質は変えない）
+        var clones = new Dictionary<Material, Material>();
+        foreach (var t in tanks.Values)
+            foreach (var path in new[] { "Shell", "Shell/Lip", "Shell/Hoop" })
+            {
+                var rd = t.root.Find(path)?.GetComponent<Renderer>();
+                if (rd == null || rd.sharedMaterial == null) continue;
+                if (!clones.TryGetValue(rd.sharedMaterial, out var mc)) clones[rd.sharedMaterial] = mc = new Material(rd.sharedMaterial);
+                rd.sharedMaterial = mc;
+            }
+        tankMats = new List<Material>(clones.Values).ToArray();
+        tankMatNow = Array.ConvertAll(tankMats, m => m.GetColor(BaseColorId));
         // 吹き出しの位置：Tripo の杜氏なら頭の骨に付けた目印（HeadAnchor）、仮の人形なら Head
         tojiHead = FindDeep(kura.Find("Toji"), "HeadAnchor") ?? kura.Find("Toji/Head");
         tojiAnimator = kura.Find("Toji")?.GetComponentInChildren<Animator>();
@@ -651,6 +667,8 @@ public partial class KuraBridge : MonoBehaviour
         RenderSettings.ambientEquatorColor = Color.Lerp(ambEq, new Color(0.3f, 0.32f, 0.35f), e);
         RenderSettings.ambientGroundColor = Color.Lerp(ambGround, new Color(0.14f, 0.14f, 0.15f), e);
         if (pastLook != null) pastLook.weight = e;
+        pastE = e;
+        for (int i = 0; i < tankMats.Length; i++) tankMats[i].SetColor(BaseColorId, Color.Lerp(tankMatNow[i], tankMatNow[i] * 1.75f, e));
         // 光の筋：ふだんはごく控えめ、過去（朝）は少しはっきり
         if (beams.Length > 0)
         {
@@ -688,6 +706,7 @@ public partial class KuraBridge : MonoBehaviour
 
             mpb.Clear();
             mpb.SetColor(BaseColorId, t.bandColor);
+            mpb.SetColor(EmissionId, t.bandColor * (0.6f * pastE));
             t.band.SetPropertyBlock(mpb);
 
             // 変化あり：縁と足元がゆっくり明滅する灯り色。選択だけ：足元がやわらかい白
