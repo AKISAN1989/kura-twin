@@ -22,6 +22,10 @@
 - `unity/KuraTwin/` … Unity 6 の3D。WebGL で書き出し、`web/public/unity/` に置く
 - 右側→3D の命令は `web/src/bridge.js` の5つだけ：`setDay / highlightTank / setCamera / selectTank / tojiSay`。Unity側の受け口は `KuraBridge` オブジェクト。
 
+## ローカルでの起動とテスト
+- `cd web && npm run dev`（netlify dev。Vite と Functions を http://localhost:8888 で一緒に動かす。`web/.env` の APIキーを読む）
+- `cd web && npm test`（検知ルール・類似抽出・用語の写し）
+
 ## 用語
 経過簿の項目と醸造用語は `.claude/skills/kura-terms/SKILL.md`（作品内プロンプト用の写しは `web/shared/terms.mjs`）。日順は**留添を1日目**とする。
 

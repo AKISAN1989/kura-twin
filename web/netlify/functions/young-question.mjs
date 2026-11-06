@@ -4,12 +4,11 @@ import { askJson, handler, MODELS, PRINCIPLES, HttpError } from "../lib/claude.m
 
 const NOT_FOUND = "記録が見つかりません。";
 
-const Source = z.object({ season: z.string(), tank: z.string(), date: z.string() });
 const Answer = z.object({
   found: z.boolean().describe("渡された記録の中に、質問に答える判断メモがあれば true"),
   sentences: z.array(z.object({
     text: z.string().describe("杜氏の口調で語る1文"),
-    sources: z.array(Source).describe("この文の根拠にした記録・判断メモ"),
+    sources: z.array(z.number().int()).describe("この文の根拠にした候補の番号（「候補1」なら 1）"),
   })),
 });
 
@@ -25,8 +24,9 @@ const ANSWER_SYSTEM = `${PRINCIPLES}
 
 # 仕事：若手の蔵人の質問に、過去の記録と判断メモだけを根拠に答える
 - 渡された「候補」（過去の判断メモと、その前後の経過簿、搾った時の数値）だけを使う。
-- 順に示す：①当時の判断（いつ・どのタンクで・何をしたか）②杜氏が話した理由 ③その後の経過（数値の変化と、上槽時の数値）。
-- 文は短く、1文に1つの事実。数値は記録のとおりに書く。
+- 質問に最も近い候補を1件選び、その件を中心に答える。ほかの候補は、質問に直接関わるときだけ1文で触れてよい。
+- 順に示す：①当時の判断（いつ・どのタンクで・何をしたか）②杜氏が話した理由 ③その後の経過（翌日以降の数値の動きと、上槽時の数値をそれぞれ1文）。
+- 全体で6文以内。文は短く、1文に1つの事実。数値は記録のとおりに書く。日付は「2月11日」、タンクは「8号」、日順は「留添12日目」のように書く。
 - 口調だけを杜氏らしく（ややくだけた、落ち着いた話し言葉）。内容は記録にあることだけ。
 - 「こうすべき」という助言、一般論、記録にない推測は書かない。
 - 質問に答える判断メモが候補に無ければ found を false にし、sentences は空にする。`;
@@ -66,6 +66,7 @@ export default handler(async ({ question, candidates }) => {
     model: MODELS.precise,
     system: ANSWER_SYSTEM,
     effort: "medium",
+    maxTokens: 8000,
     content: `# 候補\n${evidence}\n\n# 若手の質問\n${question}`,
     schema: Answer,
   });
@@ -91,11 +92,11 @@ export default handler(async ({ question, candidates }) => {
   if (kept.length === 0) {
     return { found: false, answer: NOT_FOUND, sentences: [], removed, sources: [], draft: draft.sentences };
   }
-  const seen = new Set();
-  const sources = kept.flatMap(s => s.sources).filter(s => {
-    const k = `${s.season}-${s.tank}-${s.date}`;
-    return seen.has(k) ? false : seen.add(k);
-  });
+  // 根拠は候補の番号で受け取り、季・タンク・日付はこちらで引く（Claude に書き写させない）
+  const sources = [...new Set(kept.flatMap(s => s.sources))]
+    .map(n => candidates[n - 1]?.memo)
+    .filter(Boolean)
+    .map(m => ({ season: m.season, tank: m.tank, date: m.date }));
   return { found: true, answer: kept.map(s => s.text).join(""), sentences: kept, removed, sources, draft: draft.sentences };
 });
 

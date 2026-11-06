@@ -25,7 +25,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
 .stage-tools button { background: rgba(255,253,248,.92); }
 .toji-bubble { position: absolute; transform: translate(-20%, -8px); max-width: min(380px, 60%);
   background: #fffdf6; color: var(--ink); border: 2px solid #3a2f25; border-radius: 12px;
-  padding: 10px 12px; font-size: 14px; line-height: 1.7; pointer-events: none;
+  padding: 10px 12px; font-size: 14px; line-height: 1.7; max-height: calc(100% - 64px); overflow-y: auto;
   box-shadow: 0 4px 14px rgba(0,0,0,.35); }
 .toji-bubble::after { content: ""; position: absolute; left: 18%; bottom: -10px; border: 8px solid transparent;
   border-top-color: #3a2f25; border-bottom: 0; }

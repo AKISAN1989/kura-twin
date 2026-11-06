@@ -7,3 +7,10 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# ローカル開発（netlify dev）：Vite を立ち上げ、/api/* を Functions に振り分ける
+[dev]
+  command = "npm run vite"
+  targetPort = 5173
+  port = 8888
+  framework = "#custom"

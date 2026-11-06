@@ -9,11 +9,11 @@
     "test": "node --test tests/"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "latest",
+    "@anthropic-ai/sdk": "1.6.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "netlify-cli": "latest",
+    "netlify-cli": "27.16.2",
     "vite": "^7.0.0"
   }
 }

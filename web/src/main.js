@@ -49,7 +49,9 @@ window.kuraOnTojiBubble = (text, x, y, visible) => {
   el.hidden = false;
   if (el.textContent !== text) el.textContent = text;
   el.style.left = `${Math.min(0.75, Math.max(0.12, x)) * 100}%`;
-  el.style.bottom = `${y * 100}%`;
+  // 長い答えでも、3Dの枠の上端（カメラのボタンの下）からはみ出さないようにする
+  const h = el.parentElement.clientHeight;
+  el.style.bottom = `${Math.max(8, Math.min(y * h, h - el.offsetHeight - 56))}px`;
 };
 window.kuraOnUnityReady = () => app.resend();
 
