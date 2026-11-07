@@ -5,7 +5,7 @@ import { app } from "../app.js";
 import { store } from "../store.js";
 import { postJson, esc } from "../api.js";
 import { attachMic } from "../speech.js";
-import { parseQuestion, rankMemos, memoWithContext } from "../similar.js";
+import { rankMemos, memoWithContext, candidatesForQuestion } from "../similar.js";
 import * as bridge from "../bridge.js";
 
 const $ = id => document.getElementById(id);
@@ -39,10 +39,11 @@ function sameQuestion(a, b) {
 }
 
 function findCandidates(question, context) {
-  const query = context
-    ? { day: context.moromi_day, rules: context.rule ? [context.rule] : [], tank: context.tank }
-    : parseQuestion(question);
-  const ranked = rankMemos(query, store.allMemos().filter(m => m.from !== "kurabito"), store.seasons, 3);
+  const pool = store.allMemos().filter(m => m.from !== "kurabito");
+  // タンクから聞いたときは、その変化の種類・日順・タンクで探す。文で聞いたときは、言葉の重なりでも探す
+  const ranked = context
+    ? rankMemos({ day: context.moromi_day, rules: context.rule ? [context.rule] : [], tank: context.tank }, pool, store.seasons, 3)
+    : candidatesForQuestion(question, pool, store.seasons, 3);
   // 前に杜氏へ直接聞いて答えてもらった問いと同じなら、その判断メモをいちばん先に
   const direct = store.savedMemos.filter(m => m.from === "kurabito" && sameQuestion(m.question, question))
     .map(m => memoWithContext(m, store.seasons));

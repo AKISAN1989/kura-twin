@@ -82,3 +82,32 @@ export function similarForTank(tank, date, events, memos, seasons) {
   if (!query.rules.length) return null; // 変化がない日は、無理に似た判断を添えない
   return rankMemos(query, memos, seasons, 1)[0] ?? null;
 }
+
+// 質問の言葉と判断メモの言葉の重なり（話し言葉で、変化の種類の言葉が入っていない問いのため）。
+// 漢字1字ずつを、多くの判断メモに出てくる字ほど軽く数える（「日」「品」などは効かない）
+const KANJI = /[一-鿿]/g;
+function memoText(m) { return `${m.change}${m.question ?? ""}${m.answer}`; }
+export function textMatches(text, memos, limit = 3) {
+  const q = new Set(text.match(KANJI) ?? []);
+  if (!q.size) return [];
+  const df = new Map();
+  for (const m of memos) for (const c of new Set(memoText(m).match(KANJI) ?? [])) df.set(c, (df.get(c) ?? 0) + 1);
+  return memos
+    .map(m => {
+      const chars = new Set(memoText(m).match(KANJI) ?? []);
+      const score = [...q].filter(c => chars.has(c)).reduce((s, c) => s + Math.log(memos.length / df.get(c)), 0);
+      return { memo: m, score };
+    })
+    .filter(s => s.score >= 1.5) // 珍しい字が1つ以上重なるときだけ
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(s => s.memo);
+}
+
+/** 蔵人の質問の候補：変化の種類・日順・タンクで探し、足りなければ言葉の重なりで足す（最大 limit 件） */
+export function candidatesForQuestion(text, memos, seasons, limit = 3) {
+  const ranked = rankMemos(parseQuestion(text), memos, seasons, limit);
+  const have = new Set(ranked.map(c => c.memo.id));
+  const extra = textMatches(text, memos, limit).filter(m => !have.has(m.id)).map(m => memoWithContext(m, seasons));
+  return [...ranked, ...extra].slice(0, limit);
+}
