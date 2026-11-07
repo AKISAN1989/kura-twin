@@ -1,3 +1,6 @@
+/* hidden の付いたものは必ず隠す（display を指定したクラスが hidden に勝って、透明な幕が画面を覆わないように） */
+[hidden] { display: none !important; }
+
 /* 蔵ツイン：蔵と同じ色調（白い漆喰・木・藍・柿色）。今季は暖かい色、過去（昨季・判断メモ）は青みのある色 */
 :root {
   --plaster: #f3eee4;
@@ -217,8 +220,8 @@ body.past .tk.on .tk-rim { stroke: #9cc3ee; }
 
 /* 役割を選んで入る画面（オープニングの後） */
 .role-pick { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px;
-  background: rgba(24,19,14,.48); backdrop-filter: blur(3px); opacity: 0; transition: opacity .35s; }
-.role-pick.on { opacity: 1; }
+  background: rgba(24,19,14,.48); backdrop-filter: blur(3px); opacity: 0; transition: opacity .35s; pointer-events: none; }
+.role-pick.on { opacity: 1; pointer-events: auto; }
 .role-pick-card { width: min(560px, 100%); padding: 26px 26px 20px; border-radius: 6px; text-align: center; color: var(--sumi);
   background: var(--washi), radial-gradient(ellipse at 30% 0%, rgba(255,255,255,.7), transparent 60%), var(--paper);
   border-top: 3px solid var(--sumi); box-shadow: 0 18px 50px rgba(0,0,0,.35); transform: translateY(8px); transition: transform .35s; }
