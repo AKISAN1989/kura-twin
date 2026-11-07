@@ -1,4 +1,5 @@
 import * as bridge from "./bridge.js";
+import { startTour, tourSeen, isTourActive } from "./tour.js";
 import { store } from "./store.js";
 import { app } from "./app.js";
 import { esc } from "./api.js";
@@ -431,7 +432,7 @@ function setRole(role, { remember = true } = {}) {
   app.emit("role");
   // 蔵人として開いたとき：杜氏が答えた問いがあれば、オープニングの後で3Dの杜氏が知らせる
   // （オープニングの「よう来たな」のすぐ後に重ならないよう、少し間をおく）
-  if (!toji) whenOpeningDone(() => setTimeout(() => { if (app.role === "kurabito") announceAnswers(); }, 1200));
+  if (!toji) whenOpeningDone(() => setTimeout(() => { if (app.role === "kurabito" && !isTourActive()) announceAnswers(); }, 1200));
 }
 
 function showRolePicker() {
@@ -730,7 +731,11 @@ async function main() {
   // 役割：覚えていればそのまま入る。初めて（または ?pick=1）は、オープニングの後に選ぶ画面を出す
   const forcePick = new URLSearchParams(location.search).has("pick");
   setRole(store.role && !forcePick ? store.role : "kurabito", { remember: false });
-  if (!store.role || forcePick) whenOpeningDone(() => setTimeout(showRolePicker, PANEL_REVEAL_MS));
+  // 初めて開いたとき：右の画面が現れたら、杜氏の案内（使い方）→ 役割を選ぶ画面。2回目からは案内を出さない
+  const tourThenPick = () => startTour({ onEnd: showRolePicker, prepare: () => { if (app.role !== "kurabito") setRole("kurabito", { remember: false }); openImport(false); app.backToToday(); } });
+  if (!store.role && !forcePick && !tourSeen()) whenOpeningDone(() => setTimeout(tourThenPick, PANEL_REVEAL_MS));
+  else if (!store.role || forcePick) whenOpeningDone(() => setTimeout(showRolePicker, PANEL_REVEAL_MS));
+  $("tour-open").onclick = () => { if (!isTourActive()) tourThenPick(); };
   // 3Dの読み込みが止まっても使えるように、60秒たったら右の画面は出す（オープニングを待たない）
   setTimeout(revealPanel, 60000);
   startUnity();
