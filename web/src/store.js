@@ -1,6 +1,11 @@
 // データの読み込みと、ブラウザ内の保存（取り込んだ経過簿・判断メモ・作った質問）。ログインは無し。
 // 質問の決まりを変えたら questions の版を上げる。古い版の質問は読み込み時に捨て、新しい決まりで作り直す
-const KEYS = { records: "kura.records.v1", memos: "kura.memos.v1", questions: "kura.questions.v4" };
+const KEYS = {
+  records: "kura.records.v1", memos: "kura.memos.v1", questions: "kura.questions.v4",
+  role: "kura.role.v1", // 選んだ役割（"kurabito" | "toji"）
+  today: "kura.today.v1", // 今日の経過簿を撮ったか（{ date, tank, days, at }）
+  asks: "kura.asks.v1", // 蔵人が杜氏に直接聞いた質問（記録に見つからなかったもの）
+};
 const OLD_KEYS = ["kura.questions.v1", "kura.questions.v2", "kura.questions.v3"]; // v3：スマホで2〜3行に収まる短い質問
 
 function readLocal(key, fallback) {
@@ -34,6 +39,9 @@ export const store = {
   pastMemos: [],
   savedMemos: [], // 今季、杜氏が答えた判断メモ
   questions: {}, // eventId → { question }
+  role: null,
+  todayLog: null,
+  asks: [], // { id, season, question, context: { tank, date, moromi_day, change } | null, asked_at, seen }
 
   async load() {
     const [kura, rules, cur, past, memos] = await Promise.all([
@@ -53,6 +61,9 @@ export const store = {
       try { localStorage.removeItem(k); } catch { /* 保存できない環境 */ }
     });
     this.questions = readLocal(KEYS.questions, {});
+    this.role = readLocal(KEYS.role, null);
+    this.todayLog = readLocal(KEYS.today, null);
+    this.asks = readLocal(KEYS.asks, []);
     // 取り込んだ経過簿を今季のデータに重ねる
     const imported = readLocal(KEYS.records, {});
     for (const [tankId, recs] of Object.entries(imported)) mergeRecords(cur, tankId, recs);
@@ -84,6 +95,34 @@ export const store = {
   saveMemo(memo) {
     this.savedMemos = this.savedMemos.filter(m => m.id !== memo.id).concat(memo);
     return writeLocal(KEYS.memos, this.savedMemos);
+  },
+
+  setRole(role) {
+    this.role = role;
+    writeLocal(KEYS.role, role);
+  },
+
+  /** 今日の経過簿を撮って保存した（「今日」はデモの暦の今日） */
+  markToday(date, tank, days) {
+    this.todayLog = { date, tank, days, at: new Date().toISOString() };
+    writeLocal(KEYS.today, this.todayLog);
+  },
+
+  /** 蔵人の質問を、杜氏の「判断を語る」の一覧に加える */
+  addAsk(ask) {
+    this.asks = this.asks.filter(a => a.id !== ask.id).concat(ask);
+    return writeLocal(KEYS.asks, this.asks);
+  },
+
+  /** 杜氏が答えた蔵人の質問（判断メモ）を、蔵人に知らせ済みにする */
+  markAsksSeen(ids) {
+    this.asks = this.asks.map(a => (ids.includes(a.id) ? { ...a, seen: true } : a));
+    writeLocal(KEYS.asks, this.asks);
+  },
+
+  /** 蔵人の質問への杜氏の答え（判断メモ）。無ければ null */
+  answerOf(askId) {
+    return this.savedMemos.find(m => m.id === askId) ?? null;
   },
 
   resetLocal() {

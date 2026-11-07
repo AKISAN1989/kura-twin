@@ -48,12 +48,14 @@ function candidatesText(candidates) {
     const recs = (c.records ?? []).map(r =>
       `  ${r.date} 日順${r.moromi_day} 品温${r.temp ?? "-"} ボーメ${r.baume ?? "-"} 日本酒度${r.nihonshudo ?? "-"} アルコール${r.alcohol ?? "-"} 状ぼう${r.joubou ?? "-"} 操作:${r.operation ?? "-"} 備考:${r.note ?? "-"}`).join("\n");
     const p = c.pressed;
-    return `## 候補${i + 1}：${m.season}年 ${m.tank}号（${c.kind ?? ""}）${m.date} 日順${m.moromi_day}
+    // 蔵人が杜氏に直接聞いた問い（記録に見つからなかったもの）への答え。タンクが無いこともある
+    const where = m.tank ? `${m.tank}号（${c.kind ?? ""}）${m.date} 日順${m.moromi_day ?? "-"}` : `${m.date}（タンクの指定なし）`;
+    return `## 候補${i + 1}：${m.season}年 ${where}${m.from === "kurabito" ? "　※蔵人が杜氏に直接聞いた問い" : ""}
 変化：${m.change}
 杜氏への質問：${m.question}
 杜氏の答え（判断メモ）：${m.answer}
 前後の経過簿：
-${recs}
+${recs || "  （なし）"}
 上槽：${p ? `${p.date} 日順${p.moromi_day} 日本酒度${p.nihonshudo ?? "-"} アルコール${p.alcohol ?? "-"} 酸度${p.acidity ?? "-"}` : "記録なし"}`;
   }).join("\n\n");
 }

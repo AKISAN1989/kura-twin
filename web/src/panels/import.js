@@ -221,6 +221,16 @@ function save() {
   app.setSeason(store.currentSeason, last);
   app.selectTank(tank);
   msg.innerHTML = `<p class="ok">${esc(app.tankLabel(tank))}に ${clean.length} 日分を保存しました。${ok ? "" : "（この端末には保存できませんでした。再読み込みで消えます）"}</p>`;
+  // 今日の経過簿：記録済み（蔵人の「今日やること」に出す）
+  store.markToday(store.seasons[store.currentSeason].today, tank, clean.length);
+  app.emit("imported");
+}
+
+/** 取り込みの途中の表を消して、最初の状態に戻す（「今日やること」に戻るとき） */
+export function resetImport() {
+  current = null;
+  $("import-out").innerHTML = "";
+  $("import-file").value = "";
 }
 
 export function initImport() {

@@ -204,16 +204,76 @@ body.past .tk.on .tk-rim { stroke: #9cc3ee; }
 .detail-head .link { margin-left: auto; }
 .mini-head { font-family: var(--mincho); font-size: 14px; margin: 0 0 6px; color: var(--muted); font-weight: 600; letter-spacing: .1em; }
 
-/* 使う人ごとのタブ */
-.roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 18px; padding-top: 0; }
-.roles button { display: grid; gap: 3px; justify-items: center; padding: 9px 4px 9px; border-radius: 4px; border: 1px solid var(--sumi-line);
-  background: rgba(255,253,248,.8); color: var(--ink); line-height: 1.3; }
-.roles .who { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mincho); font-size: 14.5px; font-weight: 600; color: var(--sumi); letter-spacing: .2em; }
-.roles .fig { width: 22px; height: 22px; flex: none; }
-.roles .what { font-family: var(--gothic); font-size: 15.5px; font-weight: 700; }
-.roles button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 3px 10px rgba(80,40,10,.18); }
-.roles button[aria-selected="true"] .who { color: #fff; }
-.roles button[aria-selected="true"] .fig { filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 1px rgba(255,255,255,.9)); }
+/* 使う人（蔵人｜杜氏）の切り替え：見出しの右上 */
+.mast-side { display: grid; gap: 8px; justify-items: end; }
+.role-switch { display: inline-grid; grid-template-columns: 1fr 1fr; padding: 3px; gap: 3px; border-radius: 999px; border: 1px solid var(--sumi-line);
+  background: rgba(255,253,248,.85); }
+.role-switch button { display: inline-flex; align-items: center; gap: 4px; padding: 5px 14px 5px 9px; border: 0; border-radius: 999px; background: none;
+  font-family: var(--mincho); font-size: 15px; font-weight: 700; letter-spacing: .14em; color: var(--sumi); }
+.role-switch .fig { width: 22px; height: 22px; flex: none; }
+.role-switch button[aria-checked="true"] { background: var(--accent); color: #fff; box-shadow: 0 2px 6px rgba(80,40,10,.22); }
+.role-switch button[aria-checked="true"] .fig { filter: drop-shadow(0 0 1px rgba(255,255,255,.9)); }
+.role-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 役割を選んで入る画面（オープニングの後） */
+.role-pick { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px;
+  background: rgba(24,19,14,.48); backdrop-filter: blur(3px); opacity: 0; transition: opacity .35s; }
+.role-pick.on { opacity: 1; }
+.role-pick-card { width: min(560px, 100%); padding: 26px 26px 20px; border-radius: 6px; text-align: center; color: var(--sumi);
+  background: var(--washi), radial-gradient(ellipse at 30% 0%, rgba(255,255,255,.7), transparent 60%), var(--paper);
+  border-top: 3px solid var(--sumi); box-shadow: 0 18px 50px rgba(0,0,0,.35); transform: translateY(8px); transition: transform .35s; }
+.role-pick.on .role-pick-card { transform: none; }
+.role-pick-kicker { margin: 0; font-family: var(--mincho); font-size: 13px; letter-spacing: .3em; color: var(--muted); }
+.role-pick-title { margin: 4px 0 18px; font-family: var(--mincho); font-size: 24px; letter-spacing: .1em; font-weight: 700; }
+.role-pick-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.role-pick-options button { display: grid; justify-items: center; gap: 6px; padding: 18px 10px 16px; border-radius: 6px; border: 1px solid var(--sumi-line);
+  background: rgba(255,253,248,.92); color: var(--sumi); box-shadow: 0 2px 0 rgba(43,36,29,.12); }
+.role-pick-options button:hover, .role-pick-options button:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); outline: none; }
+.role-pick-options .fig { width: 64px; height: 64px; }
+.rp-name { font-family: var(--mincho); font-size: 20px; font-weight: 700; letter-spacing: .08em; }
+.rp-what { font-size: 13.5px; color: var(--muted); }
+.role-pick-note { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+
+/* 区切りの見出し（蔵人の画面：今日やること／蔵の様子／杜氏に聞く） */
+.sec-head { margin: 0 0 8px; font-family: var(--mincho); font-size: 17px; font-weight: 700; letter-spacing: .14em; color: var(--sumi);
+  display: flex; align-items: center; gap: 8px; }
+.sec-head::before { content: ""; width: 4px; height: 1em; background: var(--accent); border-radius: 1px; }
+.timeline .sec-head { margin-bottom: 4px; }
+body.toji-mode .sec-head { display: none; }
+
+/* 蔵人：今日やること */
+.today-card { padding-top: 14px; }
+.today-card[hidden] { display: none; }
+.today-head { display: flex; align-items: baseline; justify-content: space-between; }
+.today-date { font-family: var(--mincho); font-size: 15px; color: var(--muted); }
+.btn-shoot { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 14px; align-items: center; cursor: pointer;
+  padding: 16px 18px; border-radius: 10px; background: var(--accent); color: #fff; box-shadow: 0 4px 0 rgba(90,40,12,.35), 0 8px 18px rgba(90,40,12,.18);
+  transition: transform .1s, box-shadow .1s; }
+.btn-shoot:hover { filter: brightness(1.05); }
+.btn-shoot:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(90,40,12,.35); }
+.btn-shoot svg { grid-row: span 2; width: 40px; height: 40px; }
+.shoot-main { font-family: var(--gothic); font-size: 21px; font-weight: 700; letter-spacing: .06em; }
+.shoot-sub { font-size: 13px; opacity: .92; }
+.today-done { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: rgba(255,253,248,.92);
+  border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); }
+.today-done .check { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--ok); color: #fff; font-weight: 700; }
+.today-done strong { display: block; font-size: 16px; }
+.today-done .again { margin-left: auto; color: var(--accent); text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.today-events { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.today-events .muted { flex-basis: 100%; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: 14px; font-weight: 700; background: #fff; }
+.today-answers { display: block; margin-top: 10px; font-size: 14px; font-weight: 700; }
+.import-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+/* 選んだタンクの変化と「このとき杜氏はどうしてた？」 */
+.ask-toji-row { margin: 8px 0 4px; padding: 8px 10px; border-radius: 8px; background: var(--paper-2); display: grid; gap: 6px; }
+.ev-line { margin: 0; font-size: 13.5px; display: flex; gap: 6px; align-items: baseline; }
+.ev-line .mk { transform: translateY(-1px); }
+.btn-ask-toji { justify-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px 7px 8px; border-radius: 999px;
+  border-color: var(--accent); color: var(--accent); font-weight: 700; background: #fff; }
+.btn-ask-toji .fig { width: 22px; height: 22px; }
+.btn-ask-toji:hover { background: var(--accent-soft); }
+
 .tab-body { padding-top: 14px; }
 .lead { margin: 0 0 10px; font-size: 15px; }
 .hint { margin: 8px 0 0; font-size: 13px; }
@@ -272,6 +332,9 @@ body.toji-mode .timeline, body.toji-mode #tank-detail, body.toji-mode #tank-summ
 .ask-question { margin: 12px 0 18px; padding: 14px 16px; background: var(--accent-soft); border-radius: 4px 16px 16px 16px;
   font-size: 19px; line-height: 1.7; }
 .ask-question.waiting { color: var(--muted); }
+.from-tag { display: inline-flex; align-items: center; gap: 5px; color: var(--accent); font-weight: 700; }
+.from-tag .fig { width: 22px; height: 22px; }
+.ask-question.kurabito { background: #fff; border: 1px solid var(--line); border-radius: 16px 4px 16px 16px; }
 .btn-voice { display: block; width: 100%; min-height: 76px; border-radius: 16px; font-size: 24px; font-weight: 700; letter-spacing: .08em;
   background: var(--accent); color: #fff; border: 0; box-shadow: 0 4px 0 rgba(0,0,0,.18); }
 .btn-voice.rec { background: var(--alert); animation: pulse 1.4s ease-in-out infinite; }
@@ -286,10 +349,10 @@ body.toji-mode .timeline, body.toji-mode #tank-detail, body.toji-mode #tank-summ
 .ask-done { margin-top: 6px; padding: 32px 20px; text-align: center; border-radius: 16px; background: rgba(255,253,248,.92); border: 1px solid var(--line); }
 .ask-done-title { font-family: var(--mincho); font-size: 24px; line-height: 1.7; margin: 0; }
 .ask-done-sub { font-size: 17px; color: var(--muted); margin: 12px 0 0; }
-body.toji-mode .roles .what { font-size: 17px; }
 
 /* 蔵人：杜氏とのチャット */
 .chat-log { display: grid; gap: 12px; }
+.chat-log > .msg { scroll-margin-bottom: 170px; } /* 新しい答えが、下に貼り付いた入力欄に隠れないように */
 .msg { display: grid; gap: 4px; max-width: 92%; }
 .msg .who { font-size: 12px; color: var(--muted); letter-spacing: .1em; }
 .msg .text { padding: 10px 13px; line-height: 1.75; font-size: 15px; }
@@ -312,6 +375,13 @@ body.toji-mode .roles .what { font-size: 17px; }
 .msg .more[open] summary::before { content: "－ "; }
 .msg .more p { margin: 6px 0 0; color: var(--muted); font-size: 14px; line-height: 1.75; }
 .msg .verified { font-size: 12px; color: var(--ok); }
+.msg .ctx { display: block; font-size: 12px; opacity: .9; margin-bottom: 3px; padding-bottom: 3px; border-bottom: 1px solid rgba(255,255,255,.35); }
+.btn-direct { justify-self: start; margin: 2px 0; padding: 8px 16px; border-radius: 999px; background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+.direct-row { display: grid; gap: 6px; justify-items: start; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.ask-sent { margin: 0; font-size: 13px; color: var(--ai); background: rgba(255,253,248,.9); border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; }
+.msg.toji.direct .text { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+.msg .new { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 4px; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; vertical-align: 1px; }
+.chat .sec-head { margin-bottom: 10px; }
 .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
 .suggest button { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: #fff; }
 .composer { position: sticky; bottom: 0; display: grid; gap: 8px; padding: 10px 0 4px;
@@ -365,8 +435,10 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
   .panel > * { padding-left: 14px; padding-right: 14px; }
   .tank-card, .tank-summary { margin-left: 14px; margin-right: 14px; }
-  .roles .what { font-size: 13.5px; white-space: nowrap; letter-spacing: 0; } /* 「経過簿を撮る」を1行に */
-  .roles .who { font-size: 13.5px; letter-spacing: .12em; }
+  .role-pick-options { grid-template-columns: 1fr; }
+  .role-pick-options button { grid-template-columns: 52px 1fr; justify-items: start; text-align: left; column-gap: 12px; padding: 12px 14px; }
+  .role-pick-options .fig { width: 52px; height: 52px; grid-row: span 2; }
+  .role-pick-title { font-size: 21px; }
   /* 読み込み中の画面：狭い画面では梁を上に寄せ、経過簿を少し小さく（作品名が梁にかからないように） */
   .kura-loader-beam { top: 3%; }
   .kura-loader-beam::after { display: none; }

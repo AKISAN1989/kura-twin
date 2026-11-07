@@ -52,6 +52,43 @@ function saveAnswer(event, answer) {
   app.emit("memo-saved");
 }
 
+// 蔵人から届いた問いへの答え：判断メモとして残す（id は問いと同じ。蔵人の側で「答えといたぞ」と知らせる）
+function saveAskAnswer(a, answer) {
+  const c = a.context;
+  const memo = {
+    id: a.id, from: "kurabito", season: a.season, tank: c?.tank ?? null, date: c?.date ?? app.seasonData.today,
+    moromi_day: c?.moromi_day ?? null, rule: "kurabito", change: c?.change ? `蔵人からの問い（${c.change}）` : "蔵人からの問い",
+    question: a.question, answer: answer.trim(), answered_at: new Date().toISOString(),
+  };
+  if (!store.saveMemo(memo)) alert("この端末に保存できませんでした（ブラウザの保存が使えない設定です）");
+  drafts.delete(a.id);
+  app.emit("memo-saved");
+}
+
+const md = d => `${Number(d.slice(5, 7))}月${Number(d.slice(8, 10))}日`;
+
+// 蔵人から届いた問い
+function askCard(a, rest) {
+  const c = a.context;
+  const title = c?.tank ? app.tankLabel(c.tank) : "蔵人の問い";
+  const sub = c ? `${md(c.date)}${c.moromi_day >= 1 ? `・留添${c.moromi_day}日目` : ""}・${c.change}` : "記録に見つからなかった問い";
+  return `<article class="ask-card from-kurabito">
+    <div class="ask-progress"><span class="from-tag"><svg class="fig" aria-hidden="true"><use href="#fig-kurabito"/></svg>蔵人から</span><strong>残り${rest}問</strong></div>
+    <h3 class="ask-tank">${esc(title)}<small>${esc(sub)}</small></h3>
+    <p class="ask-question kurabito">${esc(a.short ?? a.question)}</p>
+    ${answerForm(a.id)}
+  </article>`;
+}
+
+function answerForm(id) {
+  return `<button type="button" class="btn-voice" data-mic hidden>🎤 声で答える</button>
+      ${speechAvailable ? "" : `<p class="ask-note">この端末では声の入力が使えません。下に文字で書いてください。</p>`}
+      <label class="ask-text-label" for="ask-answer">${speechAvailable ? "文字で書く・直す" : "答え"}</label>
+      <textarea id="ask-answer" rows="3" class="ask-text" placeholder="ひとことで大丈夫です">${esc(drafts.get(id) ?? "")}</textarea>
+      <button type="button" class="btn-save" data-save disabled>この答えを残す</button>
+      <button type="button" class="btn-later" data-later>あとで答える</button>`;
+}
+
 // 左の3Dを、今答えているタンクに寄せる（杜氏の目線）
 function focus3D(tankId) {
   if (focused === tankId) return;
@@ -68,12 +105,7 @@ function questionCard(event, rest) {
   let body;
   if (q) {
     body = `<p class="ask-question">${esc(q)}</p>
-      <button type="button" class="btn-voice" data-mic hidden>🎤 声で答える</button>
-      ${speechAvailable ? "" : `<p class="ask-note">この端末では声の入力が使えません。下に文字で書いてください。</p>`}
-      <label class="ask-text-label" for="ask-answer">${speechAvailable ? "文字で書く・直す" : "答え"}</label>
-      <textarea id="ask-answer" rows="3" class="ask-text" placeholder="ひとことで大丈夫です">${esc(drafts.get(event.id) ?? "")}</textarea>
-      <button type="button" class="btn-save" data-save disabled>この答えを残す</button>
-      <button type="button" class="btn-later" data-later>あとで答える</button>`;
+      ${answerForm(event.id)}`;
   } else if (failed.has(event.id)) {
     body = `<div class="error">${esc(failed.get(event.id))}</div><button type="button" class="btn-save" data-ask>もう一度</button>`;
   } else {
@@ -97,17 +129,18 @@ function render() {
     focus3D(null);
     const memos = store.allMemos().filter(m => m.season === app.season).sort((a, b) => a.date.localeCompare(b.date));
     box.innerHTML = `<p class="lead">${esc(app.season)}年に杜氏が残した判断メモ</p>
-      ${memos.map(m => `<button type="button" class="memo-link" data-memo="${esc(m.id)}">${esc(app.tankLabel(m.tank))}
-        <span class="muted">${esc(m.date.slice(5).replace("-", "/"))} 日順${m.moromi_day}</span> ${esc(m.change)}</button>`).join("")}`;
+      ${memos.map(m => `<button type="button" class="memo-link" data-memo="${esc(m.id)}">${esc(m.tank ? app.tankLabel(m.tank) : "蔵人の問い")}
+        <span class="muted">${esc(m.date.slice(5).replace("-", "/"))}${m.moromi_day != null ? ` 日順${m.moromi_day}` : ""}</span> ${esc(m.change)}</button>`).join("")}`;
     box.querySelectorAll("[data-memo]").forEach(b => { b.onclick = () => showMemoFn(store.allMemos().find(m => m.id === b.dataset.memo)); });
     return;
   }
 
-  // 今季：今日の変化への質問を1つずつ。そのあとに、前の日に答えなかった質問を並べる
+  // 今季：蔵人から直接届いた問い（人が待っている）を先に、次に今日の変化への質問を1つずつ、そのあとに前の日に答えなかった質問を並べる
   const answered = answeredIds();
   const today = app.eventsOn().filter(e => !answered.has(e.id));
   const older = app.eventsUpTo().filter(e => e.date !== app.date && !answered.has(e.id)).reverse(); // 新しい日から
-  const all = [...today, ...older];
+  const asks = store.asks.filter(a => !answered.has(a.id)).map(a => ({ ...a, isAsk: true }));
+  const all = [...asks, ...today, ...older];
   const queue = [...all.filter(e => !later.has(e.id)), ...all.filter(e => later.has(e.id))];
   const doneCount = app.eventsOn().length - today.length;
   const current = queue[0];
@@ -121,8 +154,8 @@ function render() {
     return;
   }
 
-  box.innerHTML = questionCard(current, queue.length);
-  focus3D(current.tank);
+  box.innerHTML = current.isAsk ? askCard(current, queue.length) : questionCard(current, queue.length);
+  focus3D(current.isAsk ? current.context?.tank ?? null : current.tank);
 
   const answer = box.querySelector("#ask-answer");
   const save = box.querySelector("[data-save]");
@@ -135,7 +168,8 @@ function render() {
     save.onclick = () => {
       if (!answer.value.trim()) { answer.focus(); return; }
       later.delete(current.id);
-      saveAnswer(current, answer.value);
+      if (current.isAsk) saveAskAnswer(current, answer.value);
+      else saveAnswer(current, answer.value);
     };
     box.querySelector("[data-later]").onclick = () => {
       later.add(current.id);
@@ -147,7 +181,7 @@ function render() {
   box.querySelector("[data-ask]")?.addEventListener("click", () => makeQuestion(current));
 
   // 今日の変化と、いま出している質問・次の質問には、Claude が自分から質問をつくる（1変化につき1回）
-  for (const e of [...today, ...queue.slice(0, 2)]) {
+  for (const e of [...today, ...queue.slice(0, 2)].filter(e => !e.isAsk)) {
     if (!store.questions[e.id] && !asking.has(e.id) && !failed.has(e.id)) makeQuestion(e);
   }
 }
@@ -158,6 +192,7 @@ export function initToji({ showMemo }) {
     if (kind === "tank") return;
     if (kind === "tab" && app.tab !== "toji") focused = null; // 他のタブへ移ったら、次に戻ったときにまた寄る
     if (kind === "unity-ready") focused = null; // 3Dの読み込みより前に寄せた分を、読み込み後にもう一度送る
+    if (kind === "opening-done") focused = null; // オープニングの後は蔵全体の視点に戻るので、もう一度寄る
     render();
   });
 }

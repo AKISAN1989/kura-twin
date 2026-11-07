@@ -5,9 +5,9 @@ import { esc } from "./api.js";
 import { tankChart } from "./chart.js";
 import { allTanksOn } from "./tank-state.js";
 import { initToji } from "./panels/toji.js";
-import { initYoung } from "./panels/young.js";
+import { initYoung, askAbout, announceAnswers } from "./panels/young.js";
 import { initSummary } from "./panels/summary.js";
-import { initImport } from "./panels/import.js";
+import { initImport, resetImport } from "./panels/import.js";
 
 const $ = id => document.getElementById(id);
 
@@ -69,10 +69,11 @@ async function startUnity() {
     requestAnimationFrame(tick);
     return;
   }
+
   const base = "unity/Build/kura";
   const status = $("unity-status");
   const setText = t => { $("loader-text").textContent = t; };
-  const fail = t => { status.classList.add("failed"); setText(t); };
+  const fail = t => { status.classList.add("failed"); setText(t); finishOpening(); };
   try {
     await new Promise((resolve, reject) => {
       const s = document.createElement("script");
@@ -237,9 +238,121 @@ window.kuraOnUnityReady = () => {
   const go = (tries = 0) => {
     if ($("unity-status") && tries < 60) { setTimeout(() => go(tries + 1), 100); return; }
     bridge.setCamera("opening", "go");
+    watchOpening();
   };
   go();
 };
+
+// ---------- オープニングの終わり（7.5秒、または画面に触って飛ばしたとき） ----------
+const OPENING_MS = 7700;
+let openingDone = false;
+const afterOpening = [];
+function whenOpeningDone(fn) { if (openingDone) fn(); else afterOpening.push(fn); }
+function finishOpening() {
+  if (openingDone) return;
+  openingDone = true;
+  app.emit("opening-done");
+  afterOpening.splice(0).forEach(fn => fn());
+}
+function watchOpening() {
+  const timer = setTimeout(finishOpening, OPENING_MS);
+  // Unity と同じく、クリック・タップ・スクロール・キーで飛ばす（3Dが蔵全体の視点に戻るのを少し待つ）
+  const skip = () => { clearTimeout(timer); off(); setTimeout(finishOpening, 300); };
+  const canvas = $("unity-canvas");
+  const off = () => {
+    canvas.removeEventListener("pointerdown", skip); canvas.removeEventListener("wheel", skip); window.removeEventListener("keydown", skip);
+  };
+  canvas.addEventListener("pointerdown", skip); canvas.addEventListener("wheel", skip, { passive: true }); window.addEventListener("keydown", skip);
+}
+
+// ---------- 役割（蔵人／杜氏） ----------
+// 杜氏：今日の質問だけ（判断を語る）。蔵人：今日やること → 蔵の様子（暦と見取り図） → 杜氏に聞く
+function setRole(role, { remember = true } = {}) {
+  if (remember) store.setRole(role);
+  app.role = role;
+  app.tab = role === "toji" ? "toji" : "young";
+  const toji = role === "toji";
+  document.body.classList.toggle("toji-mode", toji);
+  document.body.classList.toggle("kurabito-mode", !toji);
+  document.querySelectorAll("[data-role]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.role === role)));
+  $("tab-toji").hidden = !toji;
+  $("tab-young").hidden = toji;
+  $("today-card").hidden = toji || importOpen;
+  $("tab-import").hidden = toji || !importOpen;
+  if (toji) {
+    app.selectTank(null);
+    // 杜氏は今日の質問に答える：過去の記録を見ていたら、今季の今日へ戻す
+    if (!app.isCurrent || app.date !== app.seasonData.today) app.setSeason(store.currentSeason);
+  }
+  app.emit("tab");
+  app.emit("role");
+  // 蔵人として開いたとき：杜氏が答えた問いがあれば、オープニングの後で3Dの杜氏が知らせる
+  // （オープニングの「よう来たな」のすぐ後に重ならないよう、少し間をおく）
+  if (!toji) whenOpeningDone(() => setTimeout(() => { if (app.role === "kurabito") announceAnswers(); }, 1200));
+}
+
+function showRolePicker() {
+  const pick = $("role-pick");
+  pick.hidden = false;
+  requestAnimationFrame(() => pick.classList.add("on"));
+  pick.querySelector(`[data-pick="${store.role ?? "kurabito"}"]`)?.focus({ preventScroll: true });
+  pick.querySelectorAll("[data-pick]").forEach(b => {
+    b.onclick = () => {
+      pick.classList.remove("on");
+      setTimeout(() => { pick.hidden = true; }, 350);
+      setRole(b.dataset.pick);
+    };
+  });
+}
+
+// ---------- 蔵人：今日やること ----------
+let importOpen = false;
+function openImport(open) {
+  importOpen = open;
+  if (!open) resetImport();
+  if (app.role === "kurabito") {
+    $("today-card").hidden = open;
+    $("tab-import").hidden = !open;
+  }
+  if (open) $("tab-import").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  else renderToday();
+}
+
+function renderToday() {
+  const box = $("today-card");
+  const today = store.seasons[store.currentSeason].today;
+  const log = store.todayLog;
+  const done = log && log.date === today;
+  const events = detectToday();
+  const waiting = store.asks.filter(a => store.answerOf(a.id)).length;
+  box.innerHTML = `
+    <div class="today-head"><h2 class="sec-head" id="today-title">今日やること</h2><span class="today-date">${md(today)}</span></div>
+    ${done
+      ? `<div class="today-done" role="status"><span class="check" aria-hidden="true">✓</span>
+          <div><strong>今日の経過簿：記録済み</strong><span class="muted small">${esc(app.tankLabel(log.tank))}・${log.days}日分（${new Date(log.at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}）</span></div>
+          <label for="import-file" class="link small again" data-open-import>もう1枚撮る</label></div>`
+      : `<label for="import-file" class="btn-shoot" data-open-import>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-2.5h6L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+          <span class="shoot-main">今日の経過簿を撮る</span><span class="shoot-sub">写真か Excel。Claude が読み取ります</span></label>`}
+    ${events.length ? `<div class="today-events"><span class="muted small">今日、変化のあったタンク</span>
+      ${events.map(id => `<button type="button" class="chip" data-tank="${esc(id)}"><i class="mk ev"></i>${esc(app.tankLabel(id))}</button>`).join("")}</div>` : ""}
+    ${waiting ? `<button type="button" class="today-answers link" data-goto-young>杜氏からの答えを見る（${waiting}件）</button>` : ""}`;
+  box.querySelectorAll("[data-open-import]").forEach(l => l.addEventListener("click", () => openImport(true)));
+  box.querySelectorAll("[data-tank]").forEach(b => {
+    b.onclick = () => {
+      if (!app.isCurrent || app.date !== today) app.setSeason(store.currentSeason, today);
+      app.selectTank(b.dataset.tank);
+      $("tank-detail").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    };
+  });
+  box.querySelector("[data-goto-young]")?.addEventListener("click", () => $("tab-young").scrollIntoView({ block: "start", behavior: "smooth" }));
+}
+// 今日（今季の暦の今日）に変化のあったタンク
+function detectToday() {
+  const today = store.seasons[store.currentSeason].today;
+  if (!app.isCurrent) return [];
+  return [...new Set(app.eventsOn(today).map(e => e.tank))];
+}
 
 // ---------- 今と過去の表示（3Dの上） ----------
 // 表示している日付と「今季／過去の仕込み」。過去へ移るときは、日付がさかのぼるように数字を動かす
@@ -361,6 +474,7 @@ function renderTankDetail() {
   box.innerHTML = `
     <div class="detail-head"><strong>${esc(app.tankLabel(id))}</strong> <span class="meta">${esc(tank.kind)}・${esc(state)}</span>
       <button type="button" class="link" id="detail-close">閉じる</button></div>
+    ${askRow(id)}
     ${tankChart(recs, { memoDays: memos.map(m => m.moromi_day), eventDays })}
     <div class="memos">
       ${memos.length ? memos.map(m => `<button type="button" class="memo-link" data-memo="${esc(m.id)}">
@@ -368,9 +482,26 @@ function renderTankDetail() {
         : `<p class="muted small">このタンクの判断メモはまだありません。</p>`}
     </div>`;
   $("detail-close").onclick = () => { app.selectTank(null); bridge.setCamera("overview"); };
+  box.querySelector("[data-ask-toji]")?.addEventListener("click", () => {
+    const ev = tankEvent(id);
+    if (ev) askAbout(ev);
+  });
   box.querySelectorAll("[data-memo]").forEach(b => {
     b.onclick = () => showMemo(store.allMemos().find(m => m.id === b.dataset.memo));
   });
+}
+
+// 選んだタンクの変化：その日の変化、無ければその日までのいちばん新しい変化（蔵人のときだけ使う）
+function tankEvent(id) {
+  return app.eventsOn().find(e => e.tank === id) ?? app.eventsUpTo().filter(e => e.tank === id).pop() ?? null;
+}
+function askRow(id) {
+  if (app.role !== "kurabito") return "";
+  const ev = tankEvent(id);
+  if (!ev) return "";
+  const when = ev.date === app.date ? "この日" : `${md(ev.date)}`;
+  return `<div class="ask-toji-row"><p class="ev-line"><i class="mk ev"></i>${esc(when)}${ev.moromi_day >= 1 ? `（留添${ev.moromi_day}日目）` : ""}：${esc(ev.change)}</p>
+    <button type="button" class="btn-ask-toji" data-ask-toji><svg class="fig" aria-hidden="true"><use href="#fig-toji"/></svg>このとき杜氏はどうしてた？</button></div>`;
 }
 
 /** 判断メモ：カメラを杜氏の目線に移し、その日の状態とメモを一緒に見せる */
@@ -383,7 +514,7 @@ function showMemo(memo) {
   const dlg = document.createElement("dialog");
   dlg.className = "memo-dialog";
   dlg.innerHTML = `
-    <h3>${esc(memo.season)}年 ${esc(app.tankLabel(memo.tank))} ${esc(memo.date)}（日順${memo.moromi_day}）</h3>
+    <h3>${esc(memo.season)}年 ${esc(memo.tank ? app.tankLabel(memo.tank) : "蔵人の問い")} ${esc(memo.date)}${memo.moromi_day != null ? `（日順${memo.moromi_day}）` : ""}</h3>
     <p class="muted">その日の経過簿：品温 ${rec?.temp ?? "-"}℃／日本酒度 ${rec?.nihonshudo ?? "-"}／ボーメ ${rec?.baume ?? "-"}／アルコール分 ${rec?.alcohol ?? "-"}%／状ぼう ${esc(rec?.joubou ?? "-")}／操作 ${esc(rec?.operation ?? "-")}／備考 ${esc(rec?.note ?? "-")}</p>
     <p><strong>変化：</strong>${esc(memo.change)}</p>
     <p><strong>質問：</strong>${esc(memo.question)}</p>
@@ -399,20 +530,6 @@ function showMemo(memo) {
     app.closeMemo();
   });
   dlg.show(); // 3Dの杜氏の目線が見えるよう、画面全体は覆わない
-}
-
-function initTabs() {
-  const tabs = [...document.querySelectorAll("[data-tab]")];
-  tabs.forEach(b => {
-    b.onclick = () => {
-      app.tab = b.dataset.tab;
-      // 杜氏のタブだけ、日付・タンク・グラフを隠して質問に絞る（年配の杜氏がスマホでも迷わないように）
-      document.body.classList.toggle("toji-mode", app.tab === "toji");
-      tabs.forEach(t => t.setAttribute("aria-selected", String(t === b)));
-      document.querySelectorAll(".tab-body").forEach(s => { s.hidden = s.id !== `tab-${app.tab}`; });
-      app.emit("tab");
-    };
-  });
 }
 
 async function main() {
@@ -451,14 +568,22 @@ async function main() {
     if (kind === "tab") requestAnimationFrame(() => centerStrip());
     if (kind !== "tab") renderTimeBadge();
   });
-  initTabs();
-  document.body.classList.toggle("toji-mode", app.tab === "toji");
   initToji({ showMemo });
   initYoung({ showMemo });
   initSummary({ showMemo });
   initImport();
+  $("import-back").onclick = () => openImport(false);
+  document.querySelectorAll("[data-role]").forEach(b => { b.onclick = () => { if (app.role !== b.dataset.role) setRole(b.dataset.role); }; });
+  app.onChange(kind => {
+    if (kind === "imported") openImport(false);
+    if (["season", "day", "memo-saved", "ask-sent", "role", "opening-done"].includes(kind)) renderToday();
+  });
 
   app.setSeason(store.currentSeason);
+  // 役割：覚えていればそのまま入る。初めて（または ?pick=1）は、オープニングの後に選ぶ画面を出す
+  const forcePick = new URLSearchParams(location.search).has("pick");
+  setRole(store.role && !forcePick ? store.role : "kurabito", { remember: false });
+  if (!store.role || forcePick) whenOpeningDone(showRolePicker);
   startUnity();
 }
 

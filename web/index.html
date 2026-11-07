@@ -108,22 +108,60 @@
     </symbol>
   </svg>
 
+  <!-- 役割を選んで入る画面：オープニングの後に出す（選んだ役割を覚えていれば出さない） -->
+  <div id="role-pick" class="role-pick" hidden>
+    <div class="role-pick-card" role="dialog" aria-modal="true" aria-labelledby="role-pick-title">
+      <p class="role-pick-kicker">蔵ツイン</p>
+      <h2 id="role-pick-title" class="role-pick-title">どちらで蔵に入りますか</h2>
+      <div class="role-pick-options">
+        <button type="button" data-pick="kurabito"><svg class="fig" aria-hidden="true"><use href="#fig-kurabito"/></svg>
+          <span class="rp-name">蔵人として入る</span><span class="rp-what">経過簿を撮る・杜氏に聞く</span></button>
+        <button type="button" data-pick="toji"><svg class="fig" aria-hidden="true"><use href="#fig-toji"/></svg>
+          <span class="rp-name">杜氏として入る</span><span class="rp-what">今日の質問に答える</span></button>
+      </div>
+      <p class="role-pick-note">選んだ役割はこの端末に覚えておきます。画面の上の「蔵人｜杜氏」でいつでも切り替えられます。</p>
+    </div>
+  </div>
+
   <aside class="panel">
     <header class="masthead">
       <div class="brand">
         <h1 class="logo logo-sm" aria-label="蔵ツイン"><span class="logo-k" aria-hidden="true">蔵</span><span class="logo-t" aria-hidden="true">ツイン</span><svg class="seal" aria-hidden="true"><use href="#seal"/></svg></h1>
         <p class="subtitle">経過簿から、杜氏の判断を蔵に残す</p>
       </div>
-      <label class="season">
-        <span class="sr-only">季</span>
-        <select id="season-select" aria-label="季"></select>
-      </label>
+      <div class="mast-side">
+        <!-- 使う人の切り替え：選んだ役割はこの端末に覚えておく -->
+        <div class="role-switch" role="radiogroup" aria-label="使う人">
+          <button type="button" role="radio" data-role="kurabito" aria-checked="false"><svg class="fig" aria-hidden="true"><use href="#fig-kurabito"/></svg>蔵人</button>
+          <button type="button" role="radio" data-role="toji" aria-checked="false"><svg class="fig" aria-hidden="true"><use href="#fig-toji"/></svg>杜氏</button>
+        </div>
+        <label class="season">
+          <span class="sr-only">季</span>
+          <select id="season-select" aria-label="季"></select>
+        </label>
+      </div>
     </header>
+
+    <!-- 蔵人：今日やること（今日の経過簿を撮る／記録済み、変化のあったタンク、杜氏からの答え） -->
+    <section id="today-card" class="today-card" aria-labelledby="today-title"></section>
+
+    <section id="tab-import" class="tab-body import-view" hidden>
+      <div class="import-head"><h2 class="sec-head">今日の経過簿を撮る</h2><button id="import-back" type="button" class="link">今日やることに戻る</button></div>
+      <p class="lead">経過簿の写真を選ぶと、Claude が読み取ります。</p>
+      <label class="dropzone">
+        <input id="import-file" type="file" accept="image/*,.xlsx,.xls">
+        <span class="dz-main">写真か Excel を選ぶ</span>
+        <span class="dz-sub">読めない欄は推測で埋めず「要確認」にします</span>
+      </label>
+      <p class="hint"><a href="sheet-template.html" target="_blank" rel="noopener">手書き用の経過簿の用紙</a></p>
+      <div id="import-out"></div>
+    </section>
 
     <!-- 杜氏の見回り：蔵での作業（櫂入れ・品温・記入）と、右の経過簿の関係を見せる -->
     <section id="patrol-card" class="patrol-card" hidden aria-live="polite"></section>
 
-    <section class="timeline" aria-label="日付とタンク">
+    <section class="timeline" aria-label="蔵の様子">
+      <h2 class="sec-head">蔵の様子</h2>
       <div class="day">
         <div class="day-head">
           <output id="day-label" class="day-label"></output>
@@ -145,26 +183,10 @@
       <div id="summary-out"></div>
     </section>
 
-    <nav class="roles" role="tablist" aria-label="使う人">
-      <button role="tab" data-tab="import" aria-selected="false"><span class="who"><svg class="fig"><use href="#fig-kurabito"/></svg>蔵人</span><span class="what">経過簿を撮る</span></button>
-      <button role="tab" data-tab="toji" aria-selected="true"><span class="who"><svg class="fig"><use href="#fig-toji"/></svg>杜氏</span><span class="what">判断を語る</span></button>
-      <button role="tab" data-tab="young" aria-selected="false"><span class="who"><svg class="fig"><use href="#fig-kurabito"/></svg>蔵人</span><span class="what">杜氏に聞く</span></button>
-    </nav>
+    <section id="tab-toji" class="tab-body" hidden></section>
 
-    <section id="tab-import" class="tab-body" hidden>
-      <p class="lead">経過簿の写真を選ぶと、Claude が読み取ります。</p>
-      <label class="dropzone">
-        <input id="import-file" type="file" accept="image/*,.xlsx,.xls">
-        <span class="dz-main">写真か Excel を選ぶ</span>
-        <span class="dz-sub">読めない欄は推測で埋めず「要確認」にします</span>
-      </label>
-      <p class="hint"><a href="sheet-template.html" target="_blank" rel="noopener">手書き用の経過簿の用紙</a></p>
-      <div id="import-out"></div>
-    </section>
-
-    <section id="tab-toji" class="tab-body"></section>
-
-    <section id="tab-young" class="tab-body chat" hidden>
+    <section id="tab-young" class="tab-body chat" aria-labelledby="young-title">
+      <h2 class="sec-head" id="young-title">杜氏に聞く</h2>
       <div id="young-out" class="chat-log" aria-live="polite"></div>
       <div id="young-suggest" class="suggest"></div>
       <div class="composer">
