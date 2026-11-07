@@ -194,10 +194,12 @@ export function initToji({ showMemo }) {
     if (kind === "unity-ready") focused = null; // 3Dの読み込みより前に寄せた分を、読み込み後にもう一度送る
     if (kind === "opening-done") focused = null; // オープニングの後は蔵全体の視点に戻るので、もう一度寄る
     // ほかの端末の変更が届いても、杜氏が答えを書いている（声で話している）あいだは描き直さない。書き終えて離れたら描き直す
-    if (kind === "synced" && typing()) { waitingSync = true; return; }
+    if (kind === "synced" && (typing() || $("tab-toji").contains(document.activeElement))) { waitingSync = true; return; }
     render();
   });
-  $("tab-toji").addEventListener("focusout", () => {
+  $("tab-toji").addEventListener("focusout", e => {
+    // 「この答えを残す」などのボタンを押した（同じカードの中へ移った）ときは描き直さない。押した処理が終わってから描き直す
+    if (e.relatedTarget && $("tab-toji").contains(e.relatedTarget)) return;
     setTimeout(() => { if (waitingSync && !typing()) { waitingSync = false; render(); } }, 0);
   });
 }
