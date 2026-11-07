@@ -46,3 +46,11 @@
   for = "/site.webmanifest"
   [headers.values]
     Content-Type = "application/manifest+json; charset=utf-8"
+
+# 公開サイトがつなぐ先を、このサイト自身と、読み取りに使う部品の配信元（SheetJS・pdf.js）だけに限る。
+# 手元のサーバーやローカルネットワーク（localhost・192.168.x.x など）へは、ブラウザが接続させない
+# （「ローカルネットワーク上のデバイスへの接続」の確認も出ない）。
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "connect-src 'self' https://cdn.sheetjs.com https://cdnjs.cloudflare.com blob: data:"
