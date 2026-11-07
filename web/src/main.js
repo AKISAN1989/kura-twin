@@ -243,6 +243,82 @@ window.kuraOnUnityReady = () => {
   go();
 };
 
+// ---------- 3Dの操作のボタン（寄る・引く・回る）と「歩いて見る」 ----------
+// ボタンは押し続けると続けて動く。歩いて見るの切り替えは Unity からの知らせ（kuraOnCameraMode）で画面を合わせる
+// （杜氏の案内が始まって自動で戻ったときも、画面がついてくる）
+function initCamControls() {
+  document.querySelectorAll("[data-cam]").forEach(b => {
+    const [mode, arg] = b.dataset.cam.split(":");
+    let timer = null;
+    const stop = () => { clearTimeout(timer); clearInterval(timer); timer = null; };
+    b.addEventListener("pointerdown", e => {
+      e.preventDefault();
+      stop();
+      bridge.setCamera(mode, arg);
+      timer = setTimeout(() => { timer = setInterval(() => bridge.setCamera(mode, arg), 170); }, 420);
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, stop));
+    b.addEventListener("click", e => { if (e.detail === 0) bridge.setCamera(mode, arg); }); // キーボードで押したとき
+  });
+  $("walk-start").onclick = () => bridge.setCamera("walk");
+  $("walk-back").onclick = () => bridge.setCamera("overview");
+  if (!matchMedia("(pointer: coarse)").matches) $("walk-help").textContent = "矢印キー（WASD）で歩く・ドラッグで見回す";
+
+  // スティック：倒した向きと量を、-1〜1 で送る（上が前）
+  const stick = $("walk-stick"), knob = stick.querySelector(".stick-knob");
+  let sent = "0,0", lastSend = 0, pid = null;
+  const send = (x, y, force = false) => {
+    const v = `${x.toFixed(2)},${y.toFixed(2)}`;
+    const now = performance.now();
+    if (v === sent || (!force && now - lastSend < 60)) return;
+    sent = v; lastSend = now;
+    bridge.setCamera("move", v);
+  };
+  const moveTo = e => {
+    const r = stick.getBoundingClientRect(), R = r.width / 2;
+    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+    const len = Math.hypot(dx, dy), max = R - 10;
+    if (len > max) { dx *= max / len; dy *= max / len; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    send(dx / max, -dy / max);
+  };
+  stick.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    pid = e.pointerId;
+    try { stick.setPointerCapture(pid); } catch { /* 指が外へ出ても追えるように。できない環境ではそのまま */ }
+    stick.classList.add("active");
+    moveTo(e);
+  });
+  stick.addEventListener("pointermove", e => { if (e.pointerId === pid) moveTo(e); });
+  const release = e => {
+    if (e.pointerId !== pid) return;
+    pid = null; stick.classList.remove("active"); knob.style.transform = "";
+    send(0, 0, true);
+  };
+  stick.addEventListener("pointerup", release);
+  stick.addEventListener("pointercancel", release);
+
+  // キーボード：矢印キー・WASD で歩く（文字を打っているときは使わない）
+  const keys = new Set();
+  const KEY = { ArrowUp: "f", KeyW: "f", ArrowDown: "b", KeyS: "b", ArrowLeft: "l", KeyA: "l", ArrowRight: "r", KeyD: "r" };
+  const typing = el => el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+  const fromKeys = () => send((keys.has("r") ? 1 : 0) - (keys.has("l") ? 1 : 0), (keys.has("f") ? 1 : 0) - (keys.has("b") ? 1 : 0), true);
+  window.addEventListener("keydown", e => {
+    if (!document.body.classList.contains("walking") || typing(e.target) || !KEY[e.code]) return;
+    e.preventDefault();
+    keys.add(KEY[e.code]); fromKeys();
+  });
+  window.addEventListener("keyup", e => { if (KEY[e.code] && keys.delete(KEY[e.code])) fromKeys(); });
+  window.addEventListener("blur", () => { if (keys.size) { keys.clear(); fromKeys(); } });
+
+  window.kuraOnCameraMode = mode => {
+    const walking = mode === "walk";
+    document.body.classList.toggle("walking", walking);
+    $("walk-ui").hidden = !walking;
+    if (!walking) { keys.clear(); knob.style.transform = ""; sent = "0,0"; }
+  };
+}
+
 // ---------- オープニングの終わり（7.5秒、または画面に触って飛ばしたとき） ----------
 const OPENING_MS = 7700;
 let openingDone = false;
@@ -554,6 +630,7 @@ async function main() {
   });
   bridge.onTankClicked(id => app.selectTank(id));
   $("cam-overview").onclick = () => bridge.setCamera("overview");
+  initCamControls();
   $("cam-toji").onclick = () => bridge.setCamera("toji", app.selected ?? store.kura.tanks[0].id);
   $("reset-local").onclick = () => {
     if (confirm("この端末に保存した取り込み結果・判断メモ・質問を消します。よろしいですか？")) {

@@ -32,7 +32,10 @@ export function highlightTank(tankId, on) {
   send("HighlightTank", { id: String(tankId), on: !!on });
 }
 
-/** setCamera：mode = "overview"（蔵全体） | "toji"（杜氏の目線：tankId の上から見下ろす） */
+/**
+ * setCamera：mode = "overview"（蔵全体） | "toji"（杜氏の目線：tankId の上から見下ろす）
+ * 操作のボタンと歩いて見る（2つ目の引数が値）："zoom"（in|out） | "turn"（left|right） | "walk" | "move"（"x,y"：-1〜1、上が前）
+ */
 export function setCamera(mode, tankId = null) {
   send("SetCamera", { mode, id: tankId == null ? "" : String(tankId) });
 }

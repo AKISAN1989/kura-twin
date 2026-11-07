@@ -251,6 +251,8 @@ public partial class KuraBridge : MonoBehaviour
             return;
         }
         if (opening) return; // オープニングのあいだは、ほかの視点の指示を受けない（終われば蔵全体に落ち着く）
+        if (HandleCameraControl(msg.mode, msg.id)) return; // 寄る・引く・回るのボタン、歩いて見る（KuraBridge.Walk.cs）
+        ExitWalk(false); // ほかの視点を選んだら、歩いて見るをやめる
         guideCam = false;
         freeCam = false;
         if (msg.mode == "toji" && tanks.TryGetValue(msg.id ?? "", out var t)) SetTojiView(t);
@@ -301,6 +303,7 @@ public partial class KuraBridge : MonoBehaviour
             arriveLookAt = new Vector3(walkTarget.x - walkDir * 0.1f, KuraScene.DeckHeight + 1.25f, side * 0.75f);
         }
         pendingText = text;
+        ExitWalk(false); // 杜氏の案内が始まったら、歩いて見るから今の操作に戻る
         Speak(""); // 歩いているあいだは吹き出しを出さない
         guiding = true;
         patrolMoving = false;
@@ -530,6 +533,29 @@ public partial class KuraBridge : MonoBehaviour
             if (Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1) || Input.touchCount > 0) return;
             swallowPointer = false; pressing = false;
         }
+        // 歩いて見る：なぞる・ドラッグで見回す。軽く触れる・クリックでタンクを選ぶ（カメラは動かさない）。歩くのは Web 側のスティックとキー
+        if (walkMode)
+        {
+            if (Input.touchCount > 0)
+            {
+                var t = Input.GetTouch(0);
+                if (t.phase == TouchPhase.Began) dragAmount = 0f;
+                else if (t.phase == TouchPhase.Moved) { dragAmount += t.deltaPosition.magnitude; if (dragAmount > 8f) WalkLook(t.deltaPosition); }
+                else if (t.phase == TouchPhase.Ended && dragAmount <= 8f) Pick(t.position);
+                return;
+            }
+            Vector2 wp = Input.mousePosition;
+            if (Input.GetMouseButtonDown(0)) { pressing = true; dragAmount = 0f; lastPointer = wp; }
+            if (pressing)
+            {
+                var d = wp - lastPointer; lastPointer = wp;
+                dragAmount += d.magnitude;
+                if (dragAmount > 5f) WalkLook(d);
+                if (Input.GetMouseButtonUp(0)) { if (dragAmount <= 5f) Pick(wp); pressing = false; }
+                if (!Input.GetMouseButton(0)) pressing = false;
+            }
+            return;
+        }
         // スマホ：1本指で回転、2本指でつまんで拡大・縮小と平行移動、軽く触れてタンクを選ぶ
         if (Input.touchCount > 0)
         {
@@ -588,7 +614,7 @@ public partial class KuraBridge : MonoBehaviour
             if (target != null)
             {
                 KuraTankClicked(target.tankId);
-                if (tanks.TryGetValue(target.tankId, out var t)) FocusTank(t);
+                if (!walkMode && tanks.TryGetValue(target.tankId, out var t)) FocusTank(t);
             }
         }
     }
@@ -798,6 +824,7 @@ public partial class KuraBridge : MonoBehaviour
         HandleInput();
 
         if (cam != null && opening) UpdateOpening(Time.deltaTime);
+        else if (cam != null && walkMode) UpdateWalk(Time.deltaTime);
         else if (cam != null)
         {
             if (overview) SetOverview(); // 画面の大きさが変わっても全体が入るように

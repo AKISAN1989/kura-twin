@@ -489,3 +489,41 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
 .tank-warn { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--check); font-size: 15px; line-height: 1.7; }
 .tank-warn button { margin-left: 4px; }
 label.cell-check, label.cell-fixed { padding: 2px 6px; border-radius: 6px; }
+
+/* ---------- 3Dの操作のボタン（寄る・引く・回る）と「歩いて見る」 ---------- */
+.stage-tools .walk-start { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.walk-start svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.walk-start svg circle { fill: currentColor; stroke: none; }
+.cam-pad { position: absolute; right: 10px; bottom: 34px; z-index: 3; display: grid; grid-template-columns: repeat(2, 54px); gap: 6px; }
+.cam-pad button { width: 54px; height: 54px; padding: 0; border-radius: 12px; display: grid; place-items: center; align-content: center; gap: 0;
+  background: rgba(255,253,248,.9); border: 1px solid rgba(43,36,29,.35); color: var(--sumi); box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  touch-action: none; user-select: none; -webkit-user-select: none; }
+.cam-pad button b { font-size: 24px; line-height: 1; }
+.cam-pad button span { font-size: 10.5px; color: var(--muted); }
+.cam-pad button:active { background: var(--accent); color: #fff; }
+.cam-pad button:active span { color: #fff; }
+.stage-hint { left: 12px; right: auto; }
+body.walking .cam-pad .zoom { display: none; }
+body.walking .cam-pad { grid-template-columns: repeat(2, 54px); }
+body.walking .stage-tools, body.walking .stage-hint { display: none; }
+.walk-ui { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.walk-ui > * { pointer-events: auto; }
+.walk-back { position: absolute; top: 10px; left: 10px; min-width: 96px; min-height: 52px; border-radius: 12px; font-size: 20px; font-weight: 700;
+  background: var(--accent); color: #fff; border: 0; box-shadow: 0 3px 8px rgba(0,0,0,.3); }
+.walk-help { position: absolute; top: 14px; left: 120px; right: 10px; margin: 0; padding: 7px 12px; border-radius: 10px; font-size: 14px; line-height: 1.5;
+  background: rgba(31,27,22,.66); color: #f3ead8; pointer-events: none; width: fit-content; }
+.stick { position: absolute; left: 14px; bottom: 16px; width: 128px; height: 128px; border-radius: 50%; touch-action: none;
+  background: radial-gradient(circle, rgba(255,253,248,.28), rgba(255,253,248,.12)); border: 2px solid rgba(255,253,248,.75); box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+.stick-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+  background: rgba(255,253,248,.95); box-shadow: 0 2px 6px rgba(0,0,0,.35); transition: transform .12s; }
+.stick.active .stick-knob { transition: none; background: #fff; }
+/* 広い画面では、日付の表示を右上へ（左上の「歩いて見る」と重ならないように） */
+@media (min-width: 861px) {
+  .time-badge { left: auto; right: 12px; transform: none; }
+  body.walking .time-badge { top: 12px; }
+  .walk-help { top: auto; bottom: 20px; left: 158px; right: auto; max-width: calc(100% - 300px); } /* 左下のつまみと右下のボタンのあいだ */
+}
+@media (max-width: 860px) {
+  .walk-help { top: 70px; left: 10px; font-size: 13px; }
+  body.walking .time-badge { top: 112px; }
+}

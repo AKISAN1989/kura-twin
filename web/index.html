@@ -58,6 +58,20 @@
     <div class="stage-tools">
       <button id="cam-overview" type="button">蔵全体</button>
       <button id="cam-toji" type="button">杜氏の目線</button>
+      <button id="walk-start" type="button" class="walk-start"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4" r="2.2"/><path d="M11.5 7.5l-3 2.5-1 4M11.5 7.5l2.5 3 3 1M11.5 7.5l-.5 6 3 4 1 4.5M11 13.5l-2.5 3.5-2.5 1"/></svg>歩いて見る</button>
+    </div>
+    <!-- 指の細かい操作が苦手な人のための、寄る・引く・回るのボタン（押し続けると続けて動く） -->
+    <div id="cam-pad" class="cam-pad" aria-label="3Dの操作">
+      <button type="button" data-cam="zoom:in" class="zoom" aria-label="寄る"><b>＋</b><span>寄る</span></button>
+      <button type="button" data-cam="zoom:out" class="zoom" aria-label="引く"><b>−</b><span>引く</span></button>
+      <button type="button" data-cam="turn:left" aria-label="左へ回る"><b>←</b><span>回る</span></button>
+      <button type="button" data-cam="turn:right" aria-label="右へ回る"><b>→</b><span>回る</span></button>
+    </div>
+    <!-- 歩いて見る：左下のつまみで歩き、画面をなぞって見回す -->
+    <div id="walk-ui" class="walk-ui" hidden>
+      <button id="walk-back" type="button" class="walk-back">戻る</button>
+      <p id="walk-help" class="walk-help">左下のつまみで歩く・画面をなぞって見回す</p>
+      <div id="walk-stick" class="stick" role="application" aria-label="歩く向き"><div class="stick-knob"></div></div>
     </div>
   </section>
 
