@@ -1,229 +1,219 @@
-// フローA：経過簿の取り込み。写真は Claude が読み取り（4-1）、自信のない欄は拡大して読み直す（4-4）。
-// それでも決まらない欄と、不自然な数値だけを「要確認」にして、人が確認・修正してから保存する。
+// フローA：経過簿の取り込み（写真・Excel・PDF）。読み取りは src/read-pipeline.js（写真と PDF は Claude が読み、自信のない欄は拡大して読み直す）。
+// 蔵ごとに書式が違うので、見出しがどの項目にあたるかは Claude が推定する。
+// 初めての書式で自信のない見出しだけ「この列は品温ですか？」と蔵人に聞き、答えた対応をその蔵の書式として覚える（2回目からは聞かない）。
+// それでも決まらない欄と不自然な数値だけを「要確認」にして、人が確認・修正してから保存する。
 import { app } from "../app.js";
 import { store } from "../store.js";
-import { postJson, esc, errorBox } from "../api.js";
+import { esc, errorBox } from "../api.js";
 import { insaneFields } from "../detect.js";
+import { readFile, kindOf } from "../read-pipeline.js";
+import { buildGroups, matchFormat, normalizeLabel, FIELD_LABEL, FIELD_KEYS, RECORD_FIELDS, FIELDS } from "../../shared/sheet-map.mjs";
 
 const $ = id => document.getElementById(id);
-const SHEETJS = "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
+const KIND = Object.fromEntries(FIELDS.map(([k, , t]) => [k, t]));
+const SOURCE = { photo: "写真", excel: "Excel", pdf: "PDF" };
+// 確認の画面で選ぶ項目（よく使う順）
+const CHOICES = ["temp", "baume", "nihonshudo", "alcohol", "acidity", "joubou", "moromi_day", "date", "time", "operation", "note", "tank", "ignore"];
 
-// 経過表の行（印刷用の用紙と同じ順）
-const ROWS = [
-  ["date", "月日", "text"], ["moromi_day", "日順", "int"], ["time", "時刻", "text"], ["operation", "操作", "text"],
-  ["temp", "品温", "num"], ["baume", "ボーメ", "num"], ["nihonshudo", "日本酒度", "num"], ["alcohol", "アルコール分", "num"],
-  ["acidity", "酸度", "num"], ["joubou", "状ぼう", "text"], ["note", "備考", "text"],
-];
-const LABEL = Object.fromEntries(ROWS.map(([k, l]) => [k, l]));
-const KIND = Object.fromEntries(ROWS.map(([k, , t]) => [k, t]));
+// 初めての書式を確認して覚える仕組み（次の段階で有効にする）
+const LEARN = false;
 
-let current = null; // { tank, records: [{...values, _status: {field: "ok"|"fixed"|"check"}}], stats, image }
+let current = null; // { file, table, fields, asks: [label番号], step, format, groups }
 
-// ---------- 画像 ----------
-function loadImage(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("画像を開けませんでした"));
-    img.src = URL.createObjectURL(file);
-  });
-}
-
-/** 長い辺を maxSide までに縮めた canvas */
-function toCanvas(img, maxSide = 2000) {
-  const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-  const c = document.createElement("canvas");
-  c.width = Math.round(img.naturalWidth * s);
-  c.height = Math.round(img.naturalHeight * s);
-  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-  return c;
-}
-
-/** 欄の位置（割合）のまわりを少し広めに切り出して、拡大した画像にする */
-function crop(canvas, r) {
-  const mx = Math.max(0.03, r.w * 0.6), my = Math.max(0.03, r.h * 0.6);
-  const x0 = Math.max(0, r.x - mx), y0 = Math.max(0, r.y - my);
-  const x1 = Math.min(1, r.x + r.w + mx), y1 = Math.min(1, r.y + r.h + my);
-  const sw = (x1 - x0) * canvas.width, sh = (y1 - y0) * canvas.height;
-  const scale = Math.min(4, 800 / Math.max(sw, sh, 1));
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, Math.round(sw * scale));
-  c.height = Math.max(1, Math.round(sh * scale));
-  c.getContext("2d").drawImage(canvas, x0 * canvas.width, y0 * canvas.height, sw, sh, 0, 0, c.width, c.height);
-  return c.toDataURL("image/png");
-}
-
-async function pool(items, n, fn) {
-  const queue = [...items];
-  await Promise.all(Array.from({ length: n }, async () => { while (queue.length) await fn(queue.shift()); }));
-}
-
-async function readPhoto(file) {
+// ---------- 読む ----------
+async function read(file) {
   const out = $("import-out");
-  out.innerHTML = `<p class="muted">Claude が経過簿を読み取っています…（30秒ほどかかります）</p>`;
-  const canvas = toCanvas(await loadImage(file));
-  const image = canvas.toDataURL("image/jpeg", 0.9);
-  const year = Number(app.isCurrent ? app.season : store.currentSeason);
-  let res;
+  const kind = kindOf(file);
+  const say = t => { out.innerHTML = `<p class="muted reading">${esc(t)}</p>`; };
+  say(kind === "excel" ? "Excel を読み込んでいます…" : kind === "pdf" ? "PDF を開いています…" : "Claude が経過簿を読み取っています…（30秒ほどかかります）");
+  let table;
   try {
-    res = await postJson("read-sheet", { image, year });
+    table = await readFile(file, { year: Number(store.currentSeason), onStep: say });
   } catch (e) {
-    return errorBox(out, e.message, () => readPhoto(file));
+    return errorBox(out, e.message, () => read(file));
   }
-
-  const stats = { cells: 0, low: 0, fixed: 0, check: 0, insane: 0 };
-  const records = res.records.map(r => {
-    const rec = { _status: {}, _regions: r.low_regions ?? [] };
-    for (const [k] of ROWS) {
-      rec[k] = r[k];
-      if (r[k] != null || r.confidence?.[k] === "low") stats.cells++;
-      rec._status[k] = r.confidence?.[k] === "low" ? "low" : "ok";
-      if (r.confidence?.[k] === "low") stats.low++;
-    }
-    return rec;
-  });
-
-  // 自信のない欄を、拡大して読み直す
-  const jobs = [];
-  records.forEach((rec, i) => {
-    for (const [k] of ROWS) if (rec._status[k] === "low") jobs.push({ rec, i, k, region: rec._regions.find(g => g.field === k) });
-  });
-  if (jobs.length) out.innerHTML = `<p class="muted">自信のない欄が${jobs.length}か所ありました。拡大して読み直しています…</p>`;
-  await pool(jobs, 3, async ({ rec, i, k, region }) => {
-    if (!region) { rec._status[k] = "check"; return; }
-    try {
-      const neighbors = records.filter((_, j) => j !== i && Math.abs(j - i) <= 2).map(n => ({ date: n.date, value: n[k] }));
-      const rr = await postJson("reread", {
-        image: crop(canvas, region), field: k, fieldLabel: LABEL[k], tank: res.tank, date: rec.date, firstRead: rec[k], neighbors,
-      });
-      const v = KIND[k] === "text" ? rr.value_text : rr.value_number;
-      if (rr.confident && v != null) { rec[k] = v; rec._status[k] = "fixed"; } else rec._status[k] = "check";
-    } catch {
-      rec._status[k] = "check"; // 読み直しに失敗したら人に確認してもらう
-    }
-  });
-
-  for (const rec of records) {
-    for (const k of insaneFields(rec, store.rules)) { rec._status[k] = "check"; stats.insane++; }
-    for (const [k] of ROWS) {
-      if (rec._status[k] === "fixed") stats.fixed++;
-      if (rec._status[k] === "check") stats.check++;
-    }
+  if (!table.entries.length) {
+    out.innerHTML = `<div class="error">記録を読み取れませんでした。${table.blurry ? "写真がぼやけています。撮り直してください。" : ""}</div>`;
+    return;
   }
-  current = { tank: res.tank, records, stats, blurry: res.image_quality === "blurry", source: "photo" };
-  renderTable();
+  // 覚えた書式なら、その対応で読む（聞かない）。初めてなら Claude の推定を使い、自信のない列だけ聞く
+  const match = LEARN ? matchFormat(table.labels, store.formats) : null;
+  if (match) {
+    current = { file, table, fields: match.fields, asks: [], step: 0, format: match.format, known: true };
+    store.saveFormat({ ...match.format, used: (match.format.used ?? 0) + 1 });
+    return finish();
+  }
+  const asks = LEARN ? table.labels.map((l, i) => (l.confidence === "low" ? i : -1)).filter(i => i >= 0) : [];
+  current = { file, table, fields: table.labels.map(l => l.field), asks, step: 0, format: null, known: false };
+  if (asks.length) renderAsk(); else finish();
 }
 
-// ---------- Excel ----------
-async function readExcel(file) {
+// ---------- 初めての書式：自信のない列だけ聞く（短い言葉と大きなボタン） ----------
+function samples(i) {
+  return current.table.entries.map(e => e.values[i]).filter(v => v != null && String(v).trim() !== "").slice(0, 4);
+}
+
+function renderAsk(choosing = false) {
   const out = $("import-out");
-  out.innerHTML = `<p class="muted">Excel を読み込んでいます…</p>`;
-  let XLSX;
-  try {
-    XLSX = await import(/* @vite-ignore */ SHEETJS);
-  } catch {
-    return errorBox(out, "Excel を読む部品を取得できませんでした。通信を確認して再実行してください", () => readExcel(file));
-  }
-  const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
-  const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
-  const year = Number(app.isCurrent ? app.season : store.currentSeason);
-  const byLabel = {};
-  let tank = null;
-  for (const row of rows) {
-    const head = String(row[0] ?? "").replace(/\s/g, "");
-    const hit = ROWS.find(([, l]) => head === l || head.startsWith(l));
-    if (hit) byLabel[hit[0]] = row.slice(1);
-    for (const cell of row) {
-      const m = /(\d+)\s*号/.exec(String(cell ?? ""));
-      if (m && !tank) tank = m[1];
-    }
-  }
-  if (!byLabel.date) return errorBox(out, "「月日」の行が見つかりませんでした。経過表の書式（項目が縦、日付が横）か確認してください", () => readExcel(file));
-  const n = byLabel.date.length;
-  const records = [];
-  for (let i = 0; i < n; i++) {
-    const d = toDate(byLabel.date[i], year);
-    if (!d) continue;
-    const rec = { date: d, _status: {} };
-    for (const [k] of ROWS) {
-      if (k === "date") { rec._status.date = "ok"; continue; }
-      const v = byLabel[k]?.[i] ?? null;
-      rec[k] = v == null || v === "" ? null : KIND[k] === "text" ? String(v) : Number(v);
-      if (rec[k] != null && KIND[k] !== "text" && Number.isNaN(rec[k])) { rec[k] = null; rec._status[k] = "check"; } else rec._status[k] = "ok";
-    }
-    for (const k of insaneFields(rec, store.rules)) rec._status[k] = "check";
-    records.push(rec);
-  }
-  const check = records.reduce((s, r) => s + Object.values(r._status).filter(x => x === "check").length, 0);
-  current = { tank, records, stats: { check }, source: "excel" };
-  renderTable();
+  const i = current.asks[current.step];
+  const label = current.table.labels[i];
+  const guess = current.fields[i];
+  const n = current.asks.length;
+  const vals = samples(i);
+  out.innerHTML = `
+    <section class="ask-col" aria-live="polite">
+      <p class="ask-col-lead">はじめての書式です。<br>わからない列を教えてください。</p>
+      <p class="ask-col-count">${current.step + 1} ／ ${n}</p>
+      <div class="ask-col-label"><span class="muted small">見出し</span><strong>${esc(label.text)}</strong>
+        ${vals.length ? `<span class="ask-col-vals">${vals.map(v => `<i>${esc(v)}</i>`).join("")}</span>` : ""}</div>
+      ${choosing
+        ? `<p class="ask-col-q">どれですか？</p>
+           <div class="ask-col-choices">${CHOICES.map(k => `<button type="button" data-pick="${k}" class="${k === guess ? "guess" : ""}">${esc(FIELD_LABEL[k])}</button>`).join("")}</div>
+           <button type="button" class="ask-col-back" data-back>もどる</button>`
+        : `<p class="ask-col-q">この列は<br><strong>${esc(guess === "ignore" ? "使わない列" : FIELD_LABEL[guess])}</strong> ですか？</p>
+           <div class="ask-col-yesno">
+             <button type="button" class="yes" data-yes>はい</button>
+             <button type="button" class="no" data-no>ちがう</button>
+           </div>`}
+    </section>`;
+  out.querySelector("[data-yes]")?.addEventListener("click", () => next());
+  out.querySelector("[data-no]")?.addEventListener("click", () => renderAsk(true));
+  out.querySelector("[data-back]")?.addEventListener("click", () => renderAsk(false));
+  out.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => { current.fields[i] = b.dataset.pick; next(); }));
+  out.querySelector(".ask-col")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
-function toDate(v, year) {
-  if (v instanceof Date && !Number.isNaN(v)) {
-    return `${year}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
-  }
-  const m = /(\d{1,2})\s*[\/月.-]\s*(\d{1,2})/.exec(String(v ?? ""));
-  return m ? `${year}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` : null;
+function next() {
+  current.step++;
+  if (current.step < current.asks.length) renderAsk();
+  else finish();
+}
+
+// この蔵の書式として覚える（初めての書式を読み終えたとき）
+function remember() {
+  const labels = current.table.labels.map((l, i) => ({ norm: normalizeLabel(l.text), text: l.text, field: current.fields[i] }));
+  const n = store.formats.length + 1;
+  const format = {
+    id: `fmt-${Date.now().toString(36)}`,
+    name: `書式${n}（${labels.slice(0, 4).map(l => l.text).join("・")}${labels.length > 4 ? "…" : ""}）`,
+    labels, created_at: new Date().toISOString(), used: 1, source: current.table.source,
+  };
+  store.saveFormat(format);
+  current.format = format;
 }
 
 // ---------- 確認・修正の表 ----------
+function finish() {
+  if (LEARN && !current.known) remember();
+  const year = Number(store.currentSeason);
+  current.groups = buildGroups(current.table, current.fields, year).map(g => {
+    // 日順が書かれていない書式は、蔵の記録の同じ日の日順を使う
+    for (const r of g.records) {
+      if (r.moromi_day == null && g.tank) {
+        const known = app.seasonData && store.seasons[store.currentSeason].tanks.find(t => t.tank === g.tank)?.records.find(x => x.date === r.date);
+        if (known?.moromi_day != null) { r.moromi_day = known.moromi_day; r._status.moromi_day = "fixed"; }
+      }
+      for (const k of insaneFields(r, store.rules)) r._status[k] = "check";
+    }
+    return g;
+  });
+  renderTable();
+}
+
+function cellClass(st) { return st === "check" ? "cell-check" : st === "fixed" ? "cell-fixed" : ""; }
+
 function renderTable() {
   const out = $("import-out");
-  const { records, stats } = current;
-  if (!records.length) {
-    out.innerHTML = `<div class="error">記録を読み取れませんでした。${current.blurry ? "写真がぼやけています。撮り直してください。" : ""}</div>`;
-    return;
-  }
-  const statusText = current.source === "photo"
-    ? `読み取った欄 ${stats.cells}／自信が低かった欄 ${stats.low}／読み直しで確定 ${stats.fixed}／要確認 ${stats.check}`
-    : `Excel から ${records.length}日分／要確認 ${stats.check}`;
+  const { table, groups } = current;
+  const used = RECORD_FIELDS.filter(k => current.fields.includes(k));
+  const check = groups.reduce((s, g) => s + g.records.reduce((t, r) => t + Object.values(r._status).filter(x => x === "check").length, 0), 0);
+  const st = table.stats;
+  const statusText = table.source === "excel"
+    ? `Excel から ${groups.reduce((s, g) => s + g.records.length, 0)}日分／要確認 ${check}`
+    : `読み取った欄 ${st.cells}／自信が低かった欄 ${st.low}／読み直しで確定 ${st.fixed}／要確認 ${check}`;
+  const formatNote = !LEARN ? "" : current.known
+    ? `<p class="format-note">覚えた書式「${esc(current.format.name)}」で読みました。</p>`
+    : `<p class="format-note">この書式を「${esc(current.format.name)}」として覚えました。次からは聞かずに読みます。</p>`;
   out.innerHTML = `
-    ${current.blurry ? `<div class="error">写真がぼやけていて、読めない欄があります。読めた欄だけ表示しています。撮り直してください。</div>` : ""}
-    <p class="small">${esc(statusText)}</p>
-    <div class="row"><label>タンク <select id="import-tank">${store.kura.tanks.map(t =>
-      `<option value="${t.id}" ${t.id === current.tank ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
-      <span class="legend-inline"><span class="cell-fixed">読み直しで確定</span> <span class="cell-check">要確認</span></span></div>
-    <div class="table-wrap"><table class="sheet">
-      <tbody>${ROWS.map(([k, l]) => `<tr><th>${esc(l)}</th>${records.map((r, i) => {
-        const st = r._status[k];
-        return `<td class="${st === "check" ? "cell-check" : st === "fixed" ? "cell-fixed" : ""}">
-          <input data-i="${i}" data-k="${k}" value="${esc(r[k] ?? "")}" aria-label="${esc(l)} ${i + 1}列目"></td>`;
-      }).join("")}</tr>`).join("")}</tbody></table></div>
+    ${table.blurry ? `<div class="error">写真がぼやけていて、読めない欄があります。読めた欄だけ表示しています。撮り直してください。</div>` : ""}
+    ${formatNote}
+    <p class="small">${esc(SOURCE[table.source])}・${esc(statusText)}</p>
+    <span class="legend-inline"><span class="cell-fixed">読み直しで確定</span> <span class="cell-check">要確認</span></span>
+    ${groups.map((g, gi) => `
+      <div class="row"><label>タンク <select data-tank="${gi}">
+        ${g.tank ? "" : `<option value="">選んでください</option>`}
+        ${store.kura.tanks.map(t => `<option value="${t.id}" ${t.id === g.tank ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
+        <span class="muted small">${g.records.length}日分</span></div>
+      <div class="table-wrap"><table class="sheet">
+        <tbody>${["date", ...used.filter(k => k !== "date")].map(k => `<tr><th>${esc(FIELD_LABEL[k])}</th>${g.records.map((r, i) =>
+          `<td class="${cellClass(r._status[k])}"><input data-g="${gi}" data-i="${i}" data-k="${k}" value="${esc(r[k] ?? "")}" aria-label="${esc(FIELD_LABEL[k])} ${i + 1}列目"></td>`).join("")}</tr>`).join("")}
+        </tbody></table></div>`).join("")}
     <div class="row"><button id="import-save" type="button" class="primary">確認して保存</button>
       <span class="muted small">保存すると、3Dの蔵のタンクに反映されます。</span></div>
     <div id="import-msg"></div>`;
   out.querySelectorAll("input[data-k]").forEach(inp => {
     inp.onchange = () => {
-      const r = records[Number(inp.dataset.i)], k = inp.dataset.k;
+      const r = groups[Number(inp.dataset.g)].records[Number(inp.dataset.i)], k = inp.dataset.k;
       const v = inp.value.trim();
-      r[k] = v === "" ? null : KIND[k] === "text" ? v : Number(v);
-      r._status[k] = KIND[k] !== "text" && v !== "" && Number.isNaN(r[k]) ? "check" : "ok";
-      inp.parentElement.className = r._status[k] === "check" ? "cell-check" : "";
+      const num = KIND[k] === "num" || KIND[k] === "int";
+      r[k] = v === "" ? null : num ? Number(v) : v;
+      r._status[k] = num && v !== "" && Number.isNaN(r[k]) ? "check" : "ok";
+      inp.parentElement.className = cellClass(r._status[k]);
     };
   });
+  out.querySelectorAll("select[data-tank]").forEach(s => { s.onchange = () => { groups[Number(s.dataset.tank)].tank = s.value || null; }; });
   $("import-save").onclick = save;
 }
 
 function save() {
   const msg = $("import-msg");
-  const tank = $("import-tank").value;
-  const left = current.records.reduce((s, r) => s + Object.values(r._status).filter(x => x === "check").length, 0);
+  const { groups } = current;
+  if (groups.some(g => !g.tank)) { msg.innerHTML = `<div class="error">タンクを選んでください。</div>`; return; }
+  const left = groups.reduce((s, g) => s + g.records.reduce((t, r) => t + Object.values(r._status).filter(x => x === "check").length, 0), 0);
   if (left > 0 && !confirm(`要確認の欄が ${left} か所残っています。このまま保存しますか？`)) return;
-  const bad = current.records.filter(r => !/^\d{4}-\d{2}-\d{2}$/.test(r.date ?? "") || r.moromi_day == null || Number.isNaN(r.moromi_day));
+  const bad = groups.flatMap(g => g.records).filter(r => !/^\d{4}-\d{2}-\d{2}$/.test(r.date ?? "") || r.moromi_day == null || Number.isNaN(r.moromi_day));
   if (bad.length) {
-    msg.innerHTML = `<div class="error">月日（YYYY-MM-DD）と日順が無い列が ${bad.length} 列あります。入れてから保存してください。</div>`;
+    msg.innerHTML = `<div class="error">月日と日順が無い日が ${bad.length} 日あります。入れてから保存してください。</div>`;
     return;
   }
-  const clean = current.records.map(r => Object.fromEntries(ROWS.map(([k]) => [k, r[k] ?? null])));
-  const ok = store.saveImported(tank, clean);
-  const last = clean.map(r => r.date).sort().pop();
+  let ok = true, days = 0, last = "";
+  for (const g of groups) {
+    const clean = g.records.map(r => Object.fromEntries(RECORD_FIELDS.map(k => [k, r[k] ?? null])));
+    ok = store.saveImported(g.tank, clean) && ok;
+    days += clean.length;
+    last = [last, ...clean.map(r => r.date)].sort().pop();
+  }
+  const tanks = groups.map(g => g.tank);
   app.setSeason(store.currentSeason, last);
-  app.selectTank(tank);
-  msg.innerHTML = `<p class="ok">${esc(app.tankLabel(tank))}に ${clean.length} 日分を保存しました。${ok ? "" : "（この端末には保存できませんでした。再読み込みで消えます）"}</p>`;
+  app.selectTank(tanks[0]);
+  msg.innerHTML = `<p class="ok">${esc(tanks.map(t => app.tankLabel(t)).join("・"))}に ${days} 日分を保存しました。${ok ? "" : "（この端末には保存できませんでした。再読み込みで消えます）"}</p>`;
   // 今日の経過簿：記録済み（蔵人の「今日やること」に出す）
-  store.markToday(store.seasons[store.currentSeason].today, tank, clean.length);
+  store.markToday(store.seasons[store.currentSeason].today, tanks.join("・"), days);
   app.emit("imported");
+}
+
+// ---------- 覚えた書式（見直し・直す・忘れる） ----------
+export function renderFormats() {
+  const box = $("import-formats");
+  if (!box) return;
+  const fs = store.formats;
+  box.hidden = !fs.length;
+  box.innerHTML = `<summary>覚えた書式（${fs.length}）</summary>
+    <p class="muted small">見出しがどの項目にあたるかを、ここで直せます。</p>
+    ${fs.map(f => `<div class="fmt" data-fmt="${esc(f.id)}">
+      <div class="fmt-head"><strong>${esc(f.name)}</strong><button type="button" class="link" data-forget>忘れる</button></div>
+      <table class="fmt-map">${f.labels.map(l => `<tr><th>${esc(l.text)}</th><td>→</td><td><select data-norm="${esc(l.norm)}">
+        ${FIELD_KEYS.map(k => `<option value="${k}" ${k === l.field ? "selected" : ""}>${esc(FIELD_LABEL[k])}</option>`).join("")}</select></td></tr>`).join("")}</table>
+    </div>`).join("")}`;
+  box.querySelectorAll("[data-fmt]").forEach(el => {
+    const id = el.dataset.fmt;
+    el.querySelectorAll("select[data-norm]").forEach(s => { s.onchange = () => store.setFormatField(id, s.dataset.norm, s.value); });
+    el.querySelector("[data-forget]").onclick = () => {
+      if (!confirm("この書式を忘れます。次にこの書式を読むときは、また確認します。よろしいですか？")) return;
+      store.deleteFormat(id);
+      renderFormats();
+    };
+  });
 }
 
 /** 取り込みの途中の表を消して、最初の状態に戻す（「今日やること」に戻るとき） */
@@ -231,13 +221,14 @@ export function resetImport() {
   current = null;
   $("import-out").innerHTML = "";
   $("import-file").value = "";
+  renderFormats();
 }
 
 export function initImport() {
   $("import-file").onchange = e => {
     const file = e.target.files[0];
     if (!file) return;
-    if (/\.xlsx?$/i.test(file.name)) readExcel(file);
-    else readPhoto(file);
+    read(file).finally(renderFormats);
   };
+  renderFormats();
 }

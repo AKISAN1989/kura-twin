@@ -1,0 +1,1058 @@
+{
+ "a-standard": {
+  "name": "標準（用紙どおり・日付が横）",
+  "layout": "dates_across",
+  "labels": [
+   [
+    "月日",
+    "date"
+   ],
+   [
+    "日順",
+    "moromi_day"
+   ],
+   [
+    "時刻",
+    "time"
+   ],
+   [
+    "操作",
+    "operation"
+   ],
+   [
+    "品温",
+    "temp"
+   ],
+   [
+    "ボーメ",
+    "baume"
+   ],
+   [
+    "日本酒度",
+    "nihonshudo"
+   ],
+   [
+    "アルコール分",
+    "alcohol"
+   ],
+   [
+    "酸度",
+    "acidity"
+   ],
+   [
+    "状ぼう",
+    "joubou"
+   ],
+   [
+    "備考",
+    "note"
+   ]
+  ],
+  "rows": [
+   {
+    "tank": "3",
+    "date": "2026-01-27",
+    "values": {
+     "date": "2026-01-27",
+     "moromi_day": 11,
+     "time": "08:00",
+     "operation": null,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -22.3,
+     "alcohol": 7.6,
+     "acidity": 1.2,
+     "joubou": "落泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "3",
+    "date": "2026-01-28",
+    "values": {
+     "date": "2026-01-28",
+     "moromi_day": 12,
+     "time": "08:00",
+     "operation": null,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -19.9,
+     "alcohol": 8.7,
+     "acidity": 1.3,
+     "joubou": "玉泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "3",
+    "date": "2026-01-29",
+    "values": {
+     "date": "2026-01-29",
+     "moromi_day": 13,
+     "time": "08:00",
+     "operation": null,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -17.6,
+     "alcohol": 9.8,
+     "acidity": 1.3,
+     "joubou": "玉泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "3",
+    "date": "2026-01-30",
+    "values": {
+     "date": "2026-01-30",
+     "moromi_day": 14,
+     "time": "08:00",
+     "operation": null,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -15.4,
+     "alcohol": 10.9,
+     "acidity": 1.3,
+     "joubou": "玉泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "3",
+    "date": "2026-01-31",
+    "values": {
+     "date": "2026-01-31",
+     "moromi_day": 15,
+     "time": "08:00",
+     "operation": null,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -15.1,
+     "alcohol": 11.9,
+     "acidity": 1.3,
+     "joubou": "玉泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "3",
+    "date": "2026-02-01",
+    "values": {
+     "date": "2026-02-01",
+     "moromi_day": 16,
+     "time": "08:00",
+     "operation": null,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -14.8,
+     "alcohol": 12.8,
+     "acidity": 1.4,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "3",
+    "date": "2026-02-02",
+    "values": {
+     "date": "2026-02-02",
+     "moromi_day": 17,
+     "time": "08:00",
+     "operation": null,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -14.5,
+     "alcohol": 13.7,
+     "acidity": 1.4,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "3",
+    "date": "2026-02-03",
+    "values": {
+     "date": "2026-02-03",
+     "moromi_day": 18,
+     "time": "08:00",
+     "operation": "追水 30L",
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -11.5,
+     "alcohol": 14.4,
+     "acidity": 1.4,
+     "joubou": "地",
+     "note": "切れ鈍い"
+    }
+   }
+  ]
+ },
+ "b-dates-down": {
+  "name": "日付が縦に並ぶ",
+  "layout": "dates_down",
+  "labels": [
+   [
+    "月日",
+    "date"
+   ],
+   [
+    "日順",
+    "moromi_day"
+   ],
+   [
+    "品温",
+    "temp"
+   ],
+   [
+    "ボーメ",
+    "baume"
+   ],
+   [
+    "日本酒度",
+    "nihonshudo"
+   ],
+   [
+    "アルコール分",
+    "alcohol"
+   ],
+   [
+    "酸度",
+    "acidity"
+   ],
+   [
+    "状ぼう",
+    "joubou"
+   ],
+   [
+    "操作",
+    "operation"
+   ],
+   [
+    "備考",
+    "note"
+   ]
+  ],
+  "rows": [
+   {
+    "tank": "5",
+    "date": "2026-01-29",
+    "values": {
+     "date": "2026-01-29",
+     "moromi_day": 7,
+     "temp": 11.1,
+     "baume": 6.3,
+     "nihonshudo": null,
+     "alcohol": 3.9,
+     "acidity": 1.2,
+     "joubou": "高泡",
+     "operation": null,
+     "note": null
+    }
+   },
+   {
+    "tank": "5",
+    "date": "2026-01-30",
+    "values": {
+     "date": "2026-01-30",
+     "moromi_day": 8,
+     "temp": 11.5,
+     "baume": 5.2,
+     "nihonshudo": -30,
+     "alcohol": 4.7,
+     "acidity": 1.2,
+     "joubou": "高泡",
+     "operation": null,
+     "note": null
+    }
+   },
+   {
+    "tank": "5",
+    "date": "2026-01-31",
+    "values": {
+     "date": "2026-01-31",
+     "moromi_day": 9,
+     "temp": 12,
+     "baume": 3.9,
+     "nihonshudo": -27.4,
+     "alcohol": 5.6,
+     "acidity": 1.2,
+     "joubou": "高泡",
+     "operation": null,
+     "note": null
+    }
+   },
+   {
+    "tank": "5",
+    "date": "2026-02-01",
+    "values": {
+     "date": "2026-02-01",
+     "moromi_day": 10,
+     "temp": 12,
+     "baume": null,
+     "nihonshudo": -24.9,
+     "alcohol": 6.6,
+     "acidity": 1.2,
+     "joubou": "落泡",
+     "operation": null,
+     "note": null
+    }
+   },
+   {
+    "tank": "5",
+    "date": "2026-02-02",
+    "values": {
+     "date": "2026-02-02",
+     "moromi_day": 11,
+     "temp": 12,
+     "baume": null,
+     "nihonshudo": -22.5,
+     "alcohol": 7.6,
+     "acidity": 1.2,
+     "joubou": "落泡",
+     "operation": null,
+     "note": null
+    }
+   },
+   {
+    "tank": "5",
+    "date": "2026-02-03",
+    "values": {
+     "date": "2026-02-03",
+     "moromi_day": 12,
+     "temp": 12,
+     "baume": null,
+     "nihonshudo": -20.2,
+     "alcohol": 8.7,
+     "acidity": 1.3,
+     "joubou": "玉泡",
+     "operation": null,
+     "note": null
+    }
+   },
+   {
+    "tank": "5",
+    "date": "2026-02-04",
+    "values": {
+     "date": "2026-02-04",
+     "moromi_day": 13,
+     "temp": 12,
+     "baume": null,
+     "nihonshudo": -18,
+     "alcohol": 9.8,
+     "acidity": 1.3,
+     "joubou": "玉泡",
+     "operation": null,
+     "note": null
+    }
+   },
+   {
+    "tank": "5",
+    "date": "2026-02-05",
+    "values": {
+     "date": "2026-02-05",
+     "moromi_day": 14,
+     "temp": 12,
+     "baume": null,
+     "nihonshudo": -15.9,
+     "alcohol": 10.9,
+     "acidity": 1.3,
+     "joubou": "玉泡",
+     "operation": null,
+     "note": null
+    }
+   }
+  ]
+ },
+ "c-other-names": {
+  "name": "項目名が違う（BMD・SMV・アル分 など）",
+  "layout": "dates_across",
+  "labels": [
+   [
+    "日付",
+    "date"
+   ],
+   [
+    "醪日数",
+    "moromi_day"
+   ],
+   [
+    "温度",
+    "temp"
+   ],
+   [
+    "BMD",
+    "baume"
+   ],
+   [
+    "SMV",
+    "nihonshudo"
+   ],
+   [
+    "アル分",
+    "alcohol"
+   ],
+   [
+    "酸",
+    "acidity"
+   ],
+   [
+    "泡",
+    "joubou"
+   ],
+   [
+    "メモ",
+    "note"
+   ]
+  ],
+  "rows": [
+   {
+    "tank": "6",
+    "date": "2026-01-27",
+    "values": {
+     "date": "2026-01-27",
+     "moromi_day": 2,
+     "temp": 7.9,
+     "baume": 8,
+     "nihonshudo": null,
+     "alcohol": null,
+     "acidity": null,
+     "joubou": "筋泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "6",
+    "date": "2026-01-28",
+    "values": {
+     "date": "2026-01-28",
+     "moromi_day": 3,
+     "temp": 8.5,
+     "baume": 8.3,
+     "nihonshudo": null,
+     "alcohol": 1.8,
+     "acidity": null,
+     "joubou": "水泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "6",
+    "date": "2026-01-29",
+    "values": {
+     "date": "2026-01-29",
+     "moromi_day": 4,
+     "temp": 9.1,
+     "baume": 8.1,
+     "nihonshudo": null,
+     "alcohol": 2.3,
+     "acidity": null,
+     "joubou": "水泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "6",
+    "date": "2026-01-30",
+    "values": {
+     "date": "2026-01-30",
+     "moromi_day": 5,
+     "temp": 9.7,
+     "baume": 7.7,
+     "nihonshudo": null,
+     "alcohol": 3,
+     "acidity": 1.2,
+     "joubou": "岩泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "6",
+    "date": "2026-01-31",
+    "values": {
+     "date": "2026-01-31",
+     "moromi_day": 6,
+     "temp": 10.4,
+     "baume": 7.1,
+     "nihonshudo": null,
+     "alcohol": 3.7,
+     "acidity": 1.3,
+     "joubou": "岩泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "6",
+    "date": "2026-02-01",
+    "values": {
+     "date": "2026-02-01",
+     "moromi_day": 7,
+     "temp": 11.1,
+     "baume": 6.3,
+     "nihonshudo": null,
+     "alcohol": 4.6,
+     "acidity": 1.3,
+     "joubou": "高泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "6",
+    "date": "2026-02-02",
+    "values": {
+     "date": "2026-02-02",
+     "moromi_day": 8,
+     "temp": 11.5,
+     "baume": 5.2,
+     "nihonshudo": -30,
+     "alcohol": 5.6,
+     "acidity": 1.3,
+     "joubou": "高泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "6",
+    "date": "2026-02-03",
+    "values": {
+     "date": "2026-02-03",
+     "moromi_day": 9,
+     "temp": 11.9,
+     "baume": 3.9,
+     "nihonshudo": -26.9,
+     "alcohol": 6.7,
+     "acidity": 1.3,
+     "joubou": "高泡",
+     "note": null
+    }
+   }
+  ]
+ },
+ "d-shuffled": {
+  "name": "項目の順番が違う",
+  "layout": "dates_across",
+  "labels": [
+   [
+    "品温",
+    "temp"
+   ],
+   [
+    "月日",
+    "date"
+   ],
+   [
+    "状ぼう",
+    "joubou"
+   ],
+   [
+    "日本酒度",
+    "nihonshudo"
+   ],
+   [
+    "日順",
+    "moromi_day"
+   ],
+   [
+    "ボーメ",
+    "baume"
+   ],
+   [
+    "備考",
+    "note"
+   ],
+   [
+    "アルコール分",
+    "alcohol"
+   ],
+   [
+    "酸度",
+    "acidity"
+   ],
+   [
+    "操作",
+    "operation"
+   ],
+   [
+    "時刻",
+    "time"
+   ]
+  ],
+  "rows": [
+   {
+    "tank": "7",
+    "date": "2026-01-30",
+    "values": {
+     "temp": 8.1,
+     "date": "2026-01-30",
+     "joubou": "筋泡",
+     "nihonshudo": null,
+     "moromi_day": 2,
+     "baume": 8,
+     "note": null,
+     "alcohol": null,
+     "acidity": null,
+     "operation": null,
+     "time": "08:00"
+    }
+   },
+   {
+    "tank": "7",
+    "date": "2026-01-31",
+    "values": {
+     "temp": 8.8,
+     "date": "2026-01-31",
+     "joubou": "水泡",
+     "nihonshudo": null,
+     "moromi_day": 3,
+     "baume": 8.3,
+     "note": null,
+     "alcohol": 1.8,
+     "acidity": null,
+     "operation": null,
+     "time": "08:00"
+    }
+   },
+   {
+    "tank": "7",
+    "date": "2026-02-01",
+    "values": {
+     "temp": 9.4,
+     "date": "2026-02-01",
+     "joubou": "水泡",
+     "nihonshudo": null,
+     "moromi_day": 4,
+     "baume": 8.1,
+     "note": null,
+     "alcohol": 2.3,
+     "acidity": null,
+     "operation": null,
+     "time": "08:00"
+    }
+   },
+   {
+    "tank": "7",
+    "date": "2026-02-02",
+    "values": {
+     "temp": 10.1,
+     "date": "2026-02-02",
+     "joubou": "岩泡",
+     "nihonshudo": null,
+     "moromi_day": 5,
+     "baume": 7.7,
+     "note": null,
+     "alcohol": 3,
+     "acidity": 1.2,
+     "operation": null,
+     "time": "08:00"
+    }
+   },
+   {
+    "tank": "7",
+    "date": "2026-02-03",
+    "values": {
+     "temp": 10.7,
+     "date": "2026-02-03",
+     "joubou": "岩泡",
+     "nihonshudo": null,
+     "moromi_day": 6,
+     "baume": 7.1,
+     "note": null,
+     "alcohol": 3.7,
+     "acidity": 1.3,
+     "operation": null,
+     "time": "08:00"
+    }
+   },
+   {
+    "tank": "7",
+    "date": "2026-02-04",
+    "values": {
+     "temp": 11.1,
+     "date": "2026-02-04",
+     "joubou": "高泡",
+     "nihonshudo": null,
+     "moromi_day": 7,
+     "baume": 6.3,
+     "note": null,
+     "alcohol": 4.6,
+     "acidity": 1.3,
+     "operation": null,
+     "time": "08:00"
+    }
+   },
+   {
+    "tank": "7",
+    "date": "2026-02-05",
+    "values": {
+     "temp": 11.8,
+     "date": "2026-02-05",
+     "joubou": "高泡",
+     "nihonshudo": -30,
+     "moromi_day": 8,
+     "baume": 5.2,
+     "note": null,
+     "alcohol": 5.6,
+     "acidity": 1.3,
+     "operation": null,
+     "time": "08:00"
+    }
+   },
+   {
+    "tank": "7",
+    "date": "2026-02-06",
+    "values": {
+     "temp": 12.4,
+     "date": "2026-02-06",
+     "joubou": "高泡",
+     "nihonshudo": -26.8,
+     "moromi_day": 9,
+     "baume": 3.9,
+     "note": null,
+     "alcohol": 6.7,
+     "acidity": 1.3,
+     "operation": null,
+     "time": "08:00"
+    }
+   }
+  ]
+ },
+ "e-missing": {
+  "name": "一部の項目が無い",
+  "layout": "dates_across",
+  "labels": [
+   [
+    "月日",
+    "date"
+   ],
+   [
+    "日順",
+    "moromi_day"
+   ],
+   [
+    "品温",
+    "temp"
+   ],
+   [
+    "日本酒度",
+    "nihonshudo"
+   ],
+   [
+    "状ぼう",
+    "joubou"
+   ]
+  ],
+  "rows": [
+   {
+    "tank": "8",
+    "date": "2026-02-01",
+    "values": {
+     "date": "2026-02-01",
+     "moromi_day": 1,
+     "temp": 7.5,
+     "nihonshudo": null,
+     "joubou": "筋泡"
+    }
+   },
+   {
+    "tank": "8",
+    "date": "2026-02-02",
+    "values": {
+     "date": "2026-02-02",
+     "moromi_day": 2,
+     "temp": 8.1,
+     "nihonshudo": null,
+     "joubou": "筋泡"
+    }
+   },
+   {
+    "tank": "8",
+    "date": "2026-02-03",
+    "values": {
+     "date": "2026-02-03",
+     "moromi_day": 3,
+     "temp": 8.6,
+     "nihonshudo": null,
+     "joubou": "水泡"
+    }
+   },
+   {
+    "tank": "8",
+    "date": "2026-02-04",
+    "values": {
+     "date": "2026-02-04",
+     "moromi_day": 4,
+     "temp": 9.1,
+     "nihonshudo": null,
+     "joubou": "水泡"
+    }
+   },
+   {
+    "tank": "8",
+    "date": "2026-02-05",
+    "values": {
+     "date": "2026-02-05",
+     "moromi_day": 5,
+     "temp": 9.8,
+     "nihonshudo": null,
+     "joubou": "岩泡"
+    }
+   },
+   {
+    "tank": "8",
+    "date": "2026-02-06",
+    "values": {
+     "date": "2026-02-06",
+     "moromi_day": 6,
+     "temp": 10.5,
+     "nihonshudo": null,
+     "joubou": "岩泡"
+    }
+   },
+   {
+    "tank": "8",
+    "date": "2026-02-07",
+    "values": {
+     "date": "2026-02-07",
+     "moromi_day": 7,
+     "temp": 11.2,
+     "nihonshudo": null,
+     "joubou": "高泡"
+    }
+   },
+   {
+    "tank": "8",
+    "date": "2026-02-08",
+    "values": {
+     "date": "2026-02-08",
+     "moromi_day": 8,
+     "temp": 11.6,
+     "nihonshudo": -30,
+     "joubou": "高泡"
+    }
+   }
+  ]
+ },
+ "f-multi-tank": {
+  "name": "複数のタンクを1枚に",
+  "layout": "dates_down",
+  "labels": [
+   [
+    "日付",
+    "date"
+   ],
+   [
+    "タンク",
+    "tank"
+   ],
+   [
+    "日順",
+    "moromi_day"
+   ],
+   [
+    "品温",
+    "temp"
+   ],
+   [
+    "Bé",
+    "baume"
+   ],
+   [
+    "日本酒度",
+    "nihonshudo"
+   ],
+   [
+    "アルコール",
+    "alcohol"
+   ],
+   [
+    "状態",
+    "joubou"
+   ],
+   [
+    "備考",
+    "note"
+   ]
+  ],
+  "rows": [
+   {
+    "tank": "1",
+    "date": "2026-02-01",
+    "values": {
+     "date": "2026-02-01",
+     "tank": "1",
+     "moromi_day": 22,
+     "temp": 10.5,
+     "baume": null,
+     "nihonshudo": -2.7,
+     "alcohol": 15.8,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "2",
+    "date": "2026-02-01",
+    "values": {
+     "date": "2026-02-01",
+     "tank": "2",
+     "moromi_day": 19,
+     "temp": 10,
+     "baume": null,
+     "nihonshudo": -7.2,
+     "alcohol": 13.7,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "4",
+    "date": "2026-02-01",
+    "values": {
+     "date": "2026-02-01",
+     "tank": "4",
+     "moromi_day": 13,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -16.6,
+     "alcohol": 10.4,
+     "joubou": "玉泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "1",
+    "date": "2026-02-02",
+    "values": {
+     "date": "2026-02-02",
+     "tank": "1",
+     "moromi_day": 23,
+     "temp": 10.5,
+     "baume": null,
+     "nihonshudo": -1.4,
+     "alcohol": 16.2,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "2",
+    "date": "2026-02-02",
+    "values": {
+     "date": "2026-02-02",
+     "tank": "2",
+     "moromi_day": 20,
+     "temp": 10,
+     "baume": null,
+     "nihonshudo": -5.6,
+     "alcohol": 14.4,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "4",
+    "date": "2026-02-02",
+    "values": {
+     "date": "2026-02-02",
+     "tank": "4",
+     "moromi_day": 14,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -14.2,
+     "alcohol": 11.5,
+     "joubou": "玉泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "1",
+    "date": "2026-02-03",
+    "values": {
+     "date": "2026-02-03",
+     "tank": "1",
+     "moromi_day": 24,
+     "temp": 10.5,
+     "baume": null,
+     "nihonshudo": -0.3,
+     "alcohol": 16.5,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "2",
+    "date": "2026-02-03",
+    "values": {
+     "date": "2026-02-03",
+     "tank": "2",
+     "moromi_day": 21,
+     "temp": 10,
+     "baume": null,
+     "nihonshudo": -4.1,
+     "alcohol": 15,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "4",
+    "date": "2026-02-03",
+    "values": {
+     "date": "2026-02-03",
+     "tank": "4",
+     "moromi_day": 15,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -12,
+     "alcohol": 12.5,
+     "joubou": "玉泡",
+     "note": null
+    }
+   },
+   {
+    "tank": "1",
+    "date": "2026-02-04",
+    "values": {
+     "date": "2026-02-04",
+     "tank": "1",
+     "moromi_day": 25,
+     "temp": 10.2,
+     "baume": null,
+     "nihonshudo": 0.7,
+     "alcohol": 16.7,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "2",
+    "date": "2026-02-04",
+    "values": {
+     "date": "2026-02-04",
+     "tank": "2",
+     "moromi_day": 22,
+     "temp": 10,
+     "baume": null,
+     "nihonshudo": -2.7,
+     "alcohol": 15.5,
+     "joubou": "地",
+     "note": null
+    }
+   },
+   {
+    "tank": "4",
+    "date": "2026-02-04",
+    "values": {
+     "date": "2026-02-04",
+     "tank": "4",
+     "moromi_day": 16,
+     "temp": 11.5,
+     "baume": null,
+     "nihonshudo": -9.9,
+     "alcohol": 13.4,
+     "joubou": "地",
+     "note": null
+    }
+   }
+  ]
+ }
+}

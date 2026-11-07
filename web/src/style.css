@@ -449,3 +449,37 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
   .ledger { width: min(300px, 76vw); margin-top: 14px; }
   .logo-sm { font-size: 38px; }
 }
+
+/* 初めての書式：自信のない列だけ聞く（デジタルが得意でない人でも迷わないよう、短い言葉と大きなボタン） */
+.ask-col { margin-top: 12px; padding: 18px 16px 16px; border-radius: 16px; background: rgba(255,253,248,.95); border: 2px solid var(--accent);
+  box-shadow: 0 4px 16px rgba(80,60,30,.12); text-align: center; }
+.ask-col-lead { margin: 0; font-size: 18px; line-height: 1.6; font-weight: 700; }
+.ask-col-count { margin: 4px 0 10px; font-size: 15px; color: var(--muted); }
+.ask-col-label { display: grid; gap: 4px; justify-items: center; padding: 12px; border-radius: 12px; background: var(--paper-2); }
+.ask-col-label strong { font-family: var(--mincho); font-size: 36px; line-height: 1.2; letter-spacing: .06em; }
+.ask-col-vals { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.ask-col-vals i { font-style: normal; font-size: 18px; padding: 2px 10px; border-radius: 6px; background: #fff; border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.ask-col-q { margin: 16px 0 12px; font-size: 22px; line-height: 1.5; }
+.ask-col-q strong { font-size: 30px; color: var(--accent); }
+.ask-col-yesno { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ask-col-yesno button { min-height: 76px; border-radius: 16px; font-size: 26px; font-weight: 700; letter-spacing: .1em; border: 0; }
+.ask-col-yesno .yes { background: var(--accent); color: #fff; box-shadow: 0 4px 0 rgba(90,40,12,.35); }
+.ask-col-yesno .no { background: #fff; color: var(--ink); border: 2px solid var(--sumi-line); box-shadow: 0 4px 0 rgba(43,36,29,.15); }
+.ask-col-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ask-col-choices button { min-height: 60px; border-radius: 12px; font-size: 18px; font-weight: 700; background: #fff; border: 2px solid var(--sumi-line); }
+.ask-col-choices button.guess { border-color: var(--accent); }
+.ask-col-back { margin-top: 12px; border: 0; background: none; font-size: 17px; color: var(--muted); text-decoration: underline; min-height: 44px; }
+.format-note { margin: 10px 0 4px; padding: 8px 12px; border-radius: 8px; background: rgba(255,253,248,.92); border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); font-size: 14px; }
+.reading { padding: 10px 0; }
+/* 覚えた書式（見直し・直す） */
+.formats { margin-top: 14px; font-size: 14px; }
+.formats summary { cursor: pointer; color: var(--accent); font-weight: 700; }
+.fmt { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(255,253,248,.92); border: 1px solid var(--line); }
+.fmt-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.fmt-map { margin-top: 6px; border-collapse: collapse; }
+.fmt-map th { text-align: left; font-weight: 600; padding: 3px 8px 3px 0; }
+.fmt-map td { padding: 3px 4px; }
+.fmt-map select { font-size: 14px; padding: 4px 6px; }
+@media (max-width: 860px) {
+  .ask-col-choices { grid-template-columns: repeat(2, 1fr); }
+}

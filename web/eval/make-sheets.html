@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>検証用の経過簿をつくる</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&family=Yomogi&family=Zen+Kurenaido&display=block">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px; background: #eee; }
+  canvas { max-width: 100%; display: block; margin: 10px 0; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  #log { white-space: pre-wrap; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>検証用の経過簿（手書き風の画像・Excel・PDF）</h1>
+<p>開発中だけ使うページ。?save=1 で、scratchpad の受け取り口（127.0.0.1:8899）へ保存する。</p>
+<div id="log"></div>
+<div id="out"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module" src="./make-sheets.js"></script>
+</body>
+</html>

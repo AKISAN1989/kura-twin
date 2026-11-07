@@ -1,0 +1,373 @@
+[
+ {
+  "id": "a-standard",
+  "name": "標準（用紙どおり・日付が横）",
+  "media": "photo",
+  "ms": 10410,
+  "cells": 67,
+  "correct": 67,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 66,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "a-standard",
+  "name": "標準（用紙どおり・日付が横）",
+  "media": "excel",
+  "ms": 5396,
+  "cells": 67,
+  "correct": 67,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 88,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "a-standard",
+  "name": "標準（用紙どおり・日付が横）",
+  "media": "pdf",
+  "ms": 11660,
+  "cells": 67,
+  "correct": 67,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 66,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "b-dates-down",
+  "name": "日付が縦に並ぶ",
+  "media": "photo",
+  "ms": 12677,
+  "cells": 59,
+  "correct": 59,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 58,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "b-dates-down",
+  "name": "日付が縦に並ぶ",
+  "media": "excel",
+  "ms": 5380,
+  "cells": 59,
+  "correct": 59,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 80,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "b-dates-down",
+  "name": "日付が縦に並ぶ",
+  "media": "pdf",
+  "ms": 12234,
+  "cells": 59,
+  "correct": 59,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 58,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "c-other-names",
+  "name": "項目名が違う（BMD・SMV・アル分 など）",
+  "media": "photo",
+  "ms": 15645,
+  "cells": 55,
+  "correct": 55,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [
+   "温度",
+   "BMD"
+  ],
+  "stats": {
+   "cells": 54,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "c-other-names",
+  "name": "項目名が違う（BMD・SMV・アル分 など）",
+  "media": "excel",
+  "ms": 9927,
+  "cells": 55,
+  "correct": 55,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [
+   "温度",
+   "BMD"
+  ],
+  "stats": {
+   "cells": 72,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "c-other-names",
+  "name": "項目名が違う（BMD・SMV・アル分 など）",
+  "media": "pdf",
+  "ms": 13702,
+  "cells": 55,
+  "correct": 55,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [
+   "温度",
+   "BMD"
+  ],
+  "stats": {
+   "cells": 54,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "d-shuffled",
+  "name": "項目の順番が違う",
+  "media": "photo",
+  "ms": 14939,
+  "cells": 63,
+  "correct": 63,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 62,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "d-shuffled",
+  "name": "項目の順番が違う",
+  "media": "excel",
+  "ms": 7271,
+  "cells": 63,
+  "correct": 63,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 88,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "d-shuffled",
+  "name": "項目の順番が違う",
+  "media": "pdf",
+  "ms": 14024,
+  "cells": 63,
+  "correct": 63,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 62,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "e-missing",
+  "name": "一部の項目が無い",
+  "media": "photo",
+  "ms": 9924,
+  "cells": 34,
+  "correct": 34,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 33,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "e-missing",
+  "name": "一部の項目が無い",
+  "media": "excel",
+  "ms": 3787,
+  "cells": 34,
+  "correct": 34,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 40,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "e-missing",
+  "name": "一部の項目が無い",
+  "media": "pdf",
+  "ms": 11135,
+  "cells": 34,
+  "correct": 34,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 33,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "f-multi-tank",
+  "name": "複数のタンクを1枚に",
+  "media": "photo",
+  "ms": 15327,
+  "cells": 72,
+  "correct": 72,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 84,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "f-multi-tank",
+  "name": "複数のタンクを1枚に",
+  "media": "excel",
+  "ms": 5371,
+  "cells": 72,
+  "correct": 72,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [
+   "状態"
+  ],
+  "stats": {
+   "cells": 108,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "f-multi-tank",
+  "name": "複数のタンクを1枚に",
+  "media": "pdf",
+  "ms": 13806,
+  "cells": 72,
+  "correct": 72,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 84,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ }
+]

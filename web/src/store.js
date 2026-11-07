@@ -5,6 +5,7 @@ const KEYS = {
   role: "kura.role.v1", // 選んだ役割（"kurabito" | "toji"）
   today: "kura.today.v1", // 今日の経過簿を撮ったか（{ date, tank, days, at }）
   asks: "kura.asks.v1", // 蔵人が杜氏に直接聞いた質問（記録に見つからなかったもの）
+  formats: "kura.formats.v1", // 覚えた経過簿の書式（見出し → 項目の対応）
 };
 const OLD_KEYS = ["kura.questions.v1", "kura.questions.v2", "kura.questions.v3"]; // v3：スマホで2〜3行に収まる短い質問
 
@@ -41,6 +42,7 @@ export const store = {
   questions: {}, // eventId → { question }
   role: null,
   todayLog: null,
+  formats: [], // { id, name, labels: [{ norm, text, field }], created_at, used }
   asks: [], // { id, season, question, context: { tank, date, moromi_day, change } | null, asked_at, seen }
 
   async load() {
@@ -64,6 +66,7 @@ export const store = {
     this.role = readLocal(KEYS.role, null);
     this.todayLog = readLocal(KEYS.today, null);
     this.asks = readLocal(KEYS.asks, []);
+    this.formats = readLocal(KEYS.formats, []);
     // 取り込んだ経過簿を今季のデータに重ねる
     const imported = readLocal(KEYS.records, {});
     for (const [tankId, recs] of Object.entries(imported)) mergeRecords(cur, tankId, recs);
@@ -123,6 +126,25 @@ export const store = {
   /** 蔵人の質問への杜氏の答え（判断メモ）。無ければ null */
   answerOf(askId) {
     return this.savedMemos.find(m => m.id === askId) ?? null;
+  },
+
+  /** 経過簿の書式を覚える（同じ id なら置き換える） */
+  saveFormat(format) {
+    this.formats = this.formats.filter(f => f.id !== format.id).concat(format);
+    return writeLocal(KEYS.formats, this.formats);
+  },
+
+  /** 覚えた書式の、1つの見出しの対応を直す */
+  setFormatField(id, norm, field) {
+    const f = this.formats.find(x => x.id === id);
+    if (!f) return;
+    f.labels = f.labels.map(l => (l.norm === norm ? { ...l, field } : l));
+    writeLocal(KEYS.formats, this.formats);
+  },
+
+  deleteFormat(id) {
+    this.formats = this.formats.filter(f => f.id !== id);
+    writeLocal(KEYS.formats, this.formats);
   },
 
   resetLocal() {

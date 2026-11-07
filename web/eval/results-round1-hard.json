@@ -1,0 +1,125 @@
+[
+ {
+  "id": "a-standard",
+  "name": "標準（用紙どおり・日付が横）",
+  "media": "hard",
+  "ms": 11650,
+  "cells": 67,
+  "correct": 67,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 66,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "b-dates-down",
+  "name": "日付が縦に並ぶ",
+  "media": "hard",
+  "ms": 12396,
+  "cells": 59,
+  "correct": 59,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 58,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "c-other-names",
+  "name": "項目名が違う（BMD・SMV・アル分 など）",
+  "media": "hard",
+  "ms": 16439,
+  "cells": 55,
+  "correct": 55,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [
+   "温度",
+   "BMD"
+  ],
+  "stats": {
+   "cells": 54,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "d-shuffled",
+  "name": "項目の順番が違う",
+  "media": "hard",
+  "ms": 13347,
+  "cells": 63,
+  "correct": 63,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 62,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "e-missing",
+  "name": "一部の項目が無い",
+  "media": "hard",
+  "ms": 8716,
+  "cells": 34,
+  "correct": 34,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 33,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ },
+ {
+  "id": "f-multi-tank",
+  "name": "複数のタンクを1枚に",
+  "media": "hard",
+  "ms": 12574,
+  "cells": 72,
+  "correct": 72,
+  "check": 0,
+  "wrong": 0,
+  "extra": 0,
+  "misses": [],
+  "mappingWrong": [],
+  "asked": [],
+  "stats": {
+   "cells": 84,
+   "low": 0,
+   "fixed": 0,
+   "check": 0
+  }
+ }
+]
