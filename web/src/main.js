@@ -8,6 +8,7 @@ import { initToji } from "./panels/toji.js";
 import { initYoung, askAbout, announceAnswers } from "./panels/young.js";
 import { initSummary } from "./panels/summary.js";
 import { initImport, resetImport } from "./panels/import.js";
+import { DEMO_CODE, isValidCode, isDemoCode, formatCode, newCode } from "../shared/kura-code.mjs";
 
 const $ = id => document.getElementById(id);
 
@@ -232,6 +233,13 @@ window.kuraOnPatrol = (id, step, temp) => {
 window.kuraOnUnityReady = () => {
   app.resend();
   app.emit("unity-ready");
+  // 蔵コードを入れ直して読み直したときは、オープニングを1回だけ飛ばす
+  if (sessionStorage.getItem("kura.skipOpening")) {
+    sessionStorage.removeItem("kura.skipOpening");
+    const done = (tries = 0) => { if ($("unity-status") && tries < 60) setTimeout(() => done(tries + 1), 100); else finishOpening(); };
+    done();
+    return;
+  }
   // オープニング（大戸が開き、杜氏が「よう来たな」）：開くたびに再生する。
   // すぐに閉じた大戸の前へカメラを移して止めておき（ほかの視点が一瞬見えないように）、読み込み中の画面が消えてから動かす
   bridge.setCamera("opening", "hold");
@@ -317,6 +325,61 @@ function initCamControls() {
     $("walk-ui").hidden = !walking;
     if (!walking) { keys.clear(); knob.style.transform = ""; sent = "0,0"; }
   };
+}
+
+// ---------- 記録の共有（蔵コード） ----------
+function renderShareChip() {
+  const chip = $("share-chip");
+  const sy = store.sync;
+  chip.classList.toggle("on", !!store.code && sy.status !== "offline");
+  chip.classList.toggle("offline", !!store.code && sy.status === "offline");
+  chip.textContent = !store.code ? "共有：この端末だけ"
+    : sy.status === "offline" ? `共有：${store.code}（つながりません）`
+    : `共有中：${isDemoCode(store.code) ? "デモ用" : store.code}`;
+  chip.title = store.code ? "同じ蔵コードの端末どうしで記録を共有しています" : "蔵コードを入れると、同じ蔵の人と記録を共有できます";
+}
+
+function initShare() {
+  const dlg = $("code-dialog"), input = $("code-input"), msg = $("code-msg");
+  const say = (t, err = false) => { msg.textContent = t; msg.classList.toggle("err", err); };
+  const open = () => {
+    $("code-now").textContent = store.code
+      ? `いまの蔵コード：${store.code}${isDemoCode(store.code) ? "（デモ用。1時間ごとに元のデモデータに戻ります）" : ""}`
+      : "いまは、この端末の中だけで使っています。";
+    $("code-leave").hidden = !store.code;
+    input.value = store.code && !isDemoCode(store.code) ? store.code : "";
+    say("");
+    dlg.showModal();
+  };
+  // 蔵コードを変えたら、その蔵の記録で読み直す（オープニングは1回だけ飛ばす）
+  const join = code => {
+    store.setCode(code);
+    sessionStorage.setItem("kura.skipOpening", "1");
+    location.reload();
+  };
+  $("share-chip").onclick = open;
+  $("pick-share").onclick = open;
+  $("code-join").onclick = () => {
+    if (!isValidCode(input.value)) { say("蔵コードは12文字です（例：AB23-CD45-EF67）。もう一度確かめてください。", true); input.focus(); return; }
+    join(formatCode(input.value));
+  };
+  input.addEventListener("keydown", e => { if (e.key === "Enter") $("code-join").click(); });
+  $("code-demo").onclick = () => join(DEMO_CODE);
+  $("code-new").onclick = () => {
+    input.value = newCode();
+    say("新しい蔵コードを作りました。同じ蔵の人に伝えてから「この蔵コードで共有する」を押してください。");
+  };
+  $("code-leave").onclick = () => join(null);
+  renderShareChip();
+}
+
+// ほかの端末の変更が届いたとき：3Dの液面・画面・質問の一覧を更新する。蔵人には、杜氏の答えが届いたら3Dの杜氏が知らせる
+function onRemote(kind) {
+  renderShareChip();
+  if (kind !== "pull" || !app.season) return;
+  app.applyDay();
+  app.emit("synced");
+  if (app.role === "kurabito" && openingDone) announceAnswers();
 }
 
 // ---------- オープニングの終わり（7.5秒、または画面に触って飛ばしたとき） ----------
@@ -610,6 +673,7 @@ function showMemo(memo) {
 }
 
 async function main() {
+  store.onRemote = onRemote;
   await store.load();
   // 季：今季と、毎年積み重なる過去の仕込み
   $("season-select").innerHTML = Object.keys(store.seasons).sort().reverse()
@@ -632,6 +696,7 @@ async function main() {
   bridge.onTankClicked(id => app.selectTank(id));
   $("cam-overview").onclick = () => bridge.setCamera("overview");
   initCamControls();
+  initShare();
   $("cam-toji").onclick = () => bridge.setCamera("toji", app.selected ?? store.kura.tanks[0].id);
   $("reset-local").onclick = () => {
     if (confirm("この端末に保存した取り込み結果・判断メモ・質問を消します。よろしいですか？")) {
@@ -654,7 +719,7 @@ async function main() {
   document.querySelectorAll("[data-role]").forEach(b => { b.onclick = () => { if (app.role !== b.dataset.role) setRole(b.dataset.role); }; });
   app.onChange(kind => {
     if (kind === "imported") openImport(false);
-    if (["season", "day", "memo-saved", "ask-sent", "role", "opening-done"].includes(kind)) renderToday();
+    if (["season", "day", "memo-saved", "ask-sent", "role", "opening-done", "synced"].includes(kind)) renderToday();
   });
 
   app.setSeason(store.currentSeason);

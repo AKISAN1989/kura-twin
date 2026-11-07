@@ -232,6 +232,6 @@ export function initYoung({ showMemo }) {
   $("young-q").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); });
   attachMic($("young-mic"), $("young-q"));
   // 杜氏が答えを残したら（同じ端末で役割を切り替えたとき）、やりとりの表示を更新する
-  app.onChange(kind => { if (kind === "memo-saved" || kind === "role") render(); });
+  app.onChange(kind => { if (kind === "memo-saved" || kind === "role" || kind === "synced") render(); });
   render();
 }

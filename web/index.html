@@ -134,8 +134,24 @@
           <span class="rp-name">杜氏として入る</span><span class="rp-what">今日の質問に答える</span></button>
       </div>
       <p class="role-pick-note">選んだ役割はこの端末に覚えておきます。画面の上の「蔵人｜杜氏」でいつでも切り替えられます。</p>
+      <p class="role-pick-share">同じ蔵の人と記録を共有するときは <button type="button" id="pick-share" class="link">蔵コードを入れる</button>（入れなくても使えます）</p>
     </div>
   </div>
+
+  <!-- 蔵コードの画面 -->
+  <dialog id="code-dialog" class="code-dialog" aria-labelledby="code-title">
+    <h2 id="code-title">記録の共有（蔵コード）</h2>
+    <p class="code-lead">同じ<b>蔵コード</b>を入れた端末どうしで、経過簿・判断メモ・杜氏への質問を共有します。<br>入れなくても使えます（その端末の中だけ）。</p>
+    <p id="code-now" class="code-now"></p>
+    <label class="code-label" for="code-input">蔵コード</label>
+    <input id="code-input" class="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="例：AB23-CD45-EF67" maxlength="20">
+    <p id="code-msg" class="code-msg" role="status"></p>
+    <button type="button" id="code-join" class="code-btn primary">この蔵コードで共有する</button>
+    <button type="button" id="code-demo" class="code-btn">デモ用の蔵コードで試す<small>DEMO-KURA-2026（1時間ごとに元に戻ります）</small></button>
+    <button type="button" id="code-new" class="code-btn">新しい蔵コードを作る<small>作ったら、同じ蔵の人に伝えてください</small></button>
+    <button type="button" id="code-leave" class="code-btn">共有をやめる<small>この端末だけで使う</small></button>
+    <form method="dialog"><button class="code-close">閉じる</button></form>
+  </dialog>
 
   <aside class="panel">
     <header class="masthead">
@@ -149,6 +165,8 @@
           <button type="button" role="radio" data-role="kurabito" aria-checked="false"><svg class="fig" aria-hidden="true"><use href="#fig-kurabito"/></svg>蔵人</button>
           <button type="button" role="radio" data-role="toji" aria-checked="false"><svg class="fig" aria-hidden="true"><use href="#fig-toji"/></svg>杜氏</button>
         </div>
+        <!-- 記録の共有：蔵コード（入れなくても使える。入れると同じ蔵コードの端末どうしで共有） -->
+        <button id="share-chip" type="button" class="share-chip"></button>
         <label class="season">
           <span class="sr-only">季</span>
           <select id="season-select" aria-label="季"></select>
