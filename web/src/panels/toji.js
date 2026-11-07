@@ -193,6 +193,17 @@ export function initToji({ showMemo }) {
     if (kind === "tab" && app.tab !== "toji") focused = null; // 他のタブへ移ったら、次に戻ったときにまた寄る
     if (kind === "unity-ready") focused = null; // 3Dの読み込みより前に寄せた分を、読み込み後にもう一度送る
     if (kind === "opening-done") focused = null; // オープニングの後は蔵全体の視点に戻るので、もう一度寄る
+    // ほかの端末の変更が届いても、杜氏が答えを書いている（声で話している）あいだは描き直さない。書き終えて離れたら描き直す
+    if (kind === "synced" && typing()) { waitingSync = true; return; }
     render();
   });
+  $("tab-toji").addEventListener("focusout", () => {
+    setTimeout(() => { if (waitingSync && !typing()) { waitingSync = false; render(); } }, 0);
+  });
+}
+
+let waitingSync = false;
+function typing() {
+  const el = document.activeElement;
+  return !!el && $("tab-toji").contains(el) && (el.tagName === "TEXTAREA" || el.tagName === "INPUT" || el.matches?.("[data-mic].rec"));
 }
