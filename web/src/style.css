@@ -19,6 +19,7 @@
   --stage: #1b1916;
   /* 文字：作品名・見出し（と杜氏の吹き出し）・本文と数字 */
   --title: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --brush: "Yuji Shuku", "Shippori Mincho B1", "Hiragino Mincho ProN", serif;
   --mincho: "Zen Old Mincho", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
   --gothic: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
 }
@@ -47,7 +48,18 @@ html, body { margin: 0; height: 100%; background: var(--plaster); color: var(--i
   box-shadow: 0 6px 14px rgba(40,25,10,.25); }
 .kura-loader-beam::after { content: ""; position: absolute; left: 0; right: 0; top: 66px; height: 10px; background: linear-gradient(#5a3d27, #3f2a1b); opacity: .7; }
 .kura-loader-card { text-align: center; color: #2b2118; }
-.kura-loader-title { font-family: var(--title); font-weight: 700; font-size: 44px; letter-spacing: .5em; margin-right: -.5em; }
+/* 作品名のロゴ：「蔵」は墨のかすれた筆文字（佑字 祝）、「ツイン」は明朝で小さく添え、横に落款 */
+.logo { display: inline-flex; align-items: flex-end; line-height: 1; color: var(--sumi, #2b241d); margin: 0; font-weight: 400; letter-spacing: 0; }
+.logo .logo-k { font-family: var(--brush); font-size: 1.12em; margin-right: -.04em; }
+.logo .logo-t { font-family: var(--title); font-weight: 700; font-size: .32em; letter-spacing: .12em; margin: 0 0 .14em .04em; }
+.logo .seal { flex: none; width: .36em; height: .36em; margin: 0 0 .1em .16em; transform: rotate(3deg); opacity: .94; mix-blend-mode: multiply; }
+.logo-lg { font-size: 78px; }
+.logo-lg .logo-k { filter: url(#kasure); }
+.logo-sm { font-size: 44px; }
+.logo-sm .logo-k { filter: url(#kasure-soft); font-size: 1.18em; } /* 見出しは小さいので、かすれを弱め、字を少し大きく */
+.logo-sm .logo-t { font-size: .34em; }
+.logo-sm .seal { width: .46em; height: .46em; }
+.kura-loader-title { text-align: center; }
 .kura-loader-sub { margin-top: 8px; font-family: var(--mincho); font-size: 13px; letter-spacing: .15em; color: #6b5d4c; }
 /* 経過簿：墨の細い罫線が引かれ、数字が1行ずつ書き込まれる */
 .ledger { display: block; margin: 24px auto 10px; width: min(330px, 78vw); height: auto; overflow: visible; }
@@ -108,9 +120,6 @@ body.past { --enamel: #3c5450; --enamel-2: #2d403e; }
 
 .masthead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 16px; padding-bottom: 12px;
   border-bottom: 1px solid var(--sumi); box-shadow: 0 3px 0 -2px var(--sumi-line); }
-.brand h1 { margin: 0; display: flex; align-items: center; gap: 9px; font-family: var(--title); font-size: 27px; font-weight: 700; letter-spacing: .38em; color: var(--sumi); }
-.brand h1 .title { margin-right: -.14em; } /* 最後の字の後ろの字間を詰めて、落款との間を整える */
-.brand .seal { width: 30px; height: 30px; transform: rotate(-4deg); flex: none; opacity: .92; mix-blend-mode: multiply; }
 .subtitle { margin: 2px 0 0; font-family: var(--mincho); font-size: 12.5px; color: var(--muted); letter-spacing: .12em; }
 .season select { font: inherit; font-family: var(--gothic); font-size: 13.5px; padding: 6px 30px 6px 13px; border-radius: 4px; border: 1px solid var(--sumi-line);
   background: rgba(255,253,248,.85) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%232b241d'/%3E%3C/svg%3E") no-repeat right 11px center;
@@ -361,7 +370,7 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
   /* 読み込み中の画面：狭い画面では梁を上に寄せ、経過簿を少し小さく（作品名が梁にかからないように） */
   .kura-loader-beam { top: 3%; }
   .kura-loader-beam::after { display: none; }
-  .kura-loader-title { font-size: 34px; }
+  .logo-lg { font-size: 62px; }
   .ledger { width: min(300px, 76vw); margin-top: 14px; }
-  .brand h1 { font-size: 22px; letter-spacing: .25em; }
+  .logo-sm { font-size: 38px; }
 }
