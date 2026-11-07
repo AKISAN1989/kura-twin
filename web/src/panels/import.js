@@ -19,6 +19,7 @@ let current = null; // { file, table, fields, asks: [label番号], step, format,
 
 // ---------- 読む ----------
 async function read(file) {
+  app.backToToday(); // 取り込みは今季の記録。過去の仕込みや判断メモを見ていたら、3Dと画面を今季の今日へ戻す
   const out = $("import-out");
   const kind = kindOf(file);
   const say = t => { out.innerHTML = `<p class="muted reading">${esc(t)}</p>`; };

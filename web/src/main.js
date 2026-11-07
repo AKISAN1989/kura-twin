@@ -385,6 +385,7 @@ function showRolePicker() {
 let importOpen = false;
 function openImport(open) {
   importOpen = open;
+  if (open) app.backToToday(); // 今季の経過簿を取り込むので、過去を見ていたら今季の今日へ戻す
   if (!open) resetImport();
   if (app.role === "kurabito") {
     $("today-card").hidden = open;

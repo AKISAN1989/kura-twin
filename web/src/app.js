@@ -101,6 +101,22 @@ export const app = {
     this.emit("memo");
   },
 
+  /**
+   * 今季の今日に戻す（経過簿の取り込みは今季の記録なので、過去の仕込みや判断メモを見ているときは今へ戻す）。
+   * 開いている判断メモは閉じ、3Dも今の光と液面・蔵全体の視点に戻る。戻したら true
+   */
+  backToToday() {
+    const open = [...document.querySelectorAll(".memo-dialog[open]")];
+    const today = store.seasons[store.currentSeason].today;
+    const moved = open.length > 0 || this.memoView || !this.isCurrent || this.date !== today;
+    open.forEach(d => d.close()); // 閉じると判断メモの表示（過去）も終わる
+    this.memoView = false;
+    if (!this.isCurrent || this.date !== today) this.setSeason(store.currentSeason, today);
+    else this.applyDay();
+    if (moved) bridge.setCamera("overview");
+    return moved;
+  },
+
   /** Unity が準備できたら、今の状態を送り直す */
   resend() {
     const hl = this.highlighted;
