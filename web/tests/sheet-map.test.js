@@ -1,7 +1,7 @@
 // 経過簿の表 → 記録（書式の違い・数値の書き方・覚えた書式）
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeLabel, parseCell, toDate, buildGroups, matchFormat, signature, checkTankByDays } from "../shared/sheet-map.mjs";
+import { normalizeLabel, parseCell, toDate, buildGroups, matchFormat, signature, checkTankByDays, fillDatesFromDays } from "../shared/sheet-map.mjs";
 
 test("見出しの比べ方：全角・空白・記号の違いを無視する", () => {
   assert.equal(normalizeLabel("ＢＭＤ"), "bmd");
@@ -66,4 +66,11 @@ test("タンク番号の突き合わせ：日付と日順が合うタンクを�
   assert.deepEqual(checkTankByDays({ tank: "8", records: shaky }, season), { ok: true });
   // 比べられる日が無い（新しい日だけ）なら、突き合わせない
   assert.deepEqual(checkTankByDays({ tank: "5", records: [{ date: "2026-03-01", moromi_day: 30 }] }, season), { ok: true });
+});
+
+test("月日が読めなかった日：日順と蔵の記録から月日を埋め、要確認にする", () => {
+  const season = { tanks: [{ tank: "4", records: [{ date: "2026-02-01", moromi_day: 13 }, { date: "2026-02-02", moromi_day: 14 }] }] };
+  const g = { tank: "4", records: [{ date: null, moromi_day: 15, _status: { date: "check", moromi_day: "ok" } }] };
+  fillDatesFromDays(g, season);
+  assert.deepEqual([g.records[0].date, g.records[0]._status.date], ["2026-02-03", "check"]);
 });

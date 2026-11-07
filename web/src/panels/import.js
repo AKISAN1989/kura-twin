@@ -7,7 +7,7 @@ import { store } from "../store.js";
 import { esc, errorBox } from "../api.js";
 import { insaneFields } from "../detect.js";
 import { readFile, kindOf } from "../read-pipeline.js";
-import { buildGroups, checkTankByDays, matchFormat, normalizeLabel, FIELD_LABEL, FIELD_KEYS, RECORD_FIELDS, FIELDS } from "../../shared/sheet-map.mjs";
+import { buildGroups, checkTankByDays, fillDatesFromDays, matchFormat, normalizeLabel, FIELD_LABEL, FIELD_KEYS, RECORD_FIELDS, FIELDS } from "../../shared/sheet-map.mjs";
 
 const $ = id => document.getElementById(id);
 const KIND = Object.fromEntries(FIELDS.map(([k, , t]) => [k, t]));
@@ -123,6 +123,8 @@ function finish() {
       }
       for (const k of insaneFields(r, store.rules)) r._status[k] = "check";
     }
+    // 月日が読めなかった日は、日順と蔵の記録から月日を埋める（要確認のまま）
+    if (g.tank) fillDatesFromDays(g, store.seasons[store.currentSeason]);
     // タンク番号を、蔵にある記録の日順と突き合わせる（合わなければ要確認にし、合うタンクを示す）
     const tc = checkTankByDays(g, store.seasons[store.currentSeason]);
     if (!tc.ok) { g.tankStatus = "check"; g.suggest = tc.suggest; }

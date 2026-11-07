@@ -156,3 +156,23 @@ export function checkTankByDays(group, season) {
   if (!scored.some(t => t.id === group.tank) && !good.length) return { ok: true }; // 比べられる記録が無い
   return { ok: false, suggest: good.length === 1 ? good[0].id : null };
 }
+
+const shiftDate = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+
+/**
+ * 月日が読めなかった日（空欄・要確認）を、そのタンクの日順と蔵の記録から埋める（決まった計算）。
+ * 例：4号の日順15 → 4号の記録で日順14が 2/2 なら 2/3。埋めた月日は「要確認」のまま（人が確かめる）。
+ */
+export function fillDatesFromDays(group, season) {
+  const tank = season?.tanks.find(t => t.tank === group.tank);
+  const ref = tank?.records.find(r => r.moromi_day != null && r.date);
+  if (!ref) return group;
+  for (const r of group.records) {
+    if (r.date == null && r.moromi_day != null && r._status?.moromi_day !== "check") {
+      r.date = shiftDate(ref.date, r.moromi_day - ref.moromi_day);
+      r._status.date = "check";
+    }
+  }
+  group.records.sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? "")));
+  return group;
+}
