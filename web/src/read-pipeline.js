@@ -193,7 +193,9 @@ export async function readExcel(blob, { onStep = () => {} } = {}) {
   onStep("Claude が見出しの意味を確かめています…");
   const res = await postJson("read-grid", { grid });
   const at = (r, c) => grid[r]?.[c] ?? "";
-  const labels = res.labels.map(l => ({ text: l.text, field: l.field, confidence: l.confidence, reason: l.reason, pos: l.pos }));
+  // 見出しの文字は、Claude の書き写しではなくセルの文字そのものを使う（覚えた書式と毎回同じように照らせるように）
+  const headCell = l => (res.layout === "dates_down" ? at(res.header, l.pos) : at(l.pos, res.header)) || l.text;
+  const labels = res.labels.map(l => ({ text: headCell(l), field: l.field, confidence: l.confidence, reason: l.reason, pos: l.pos }));
   const entries = [];
   const span = res.layout === "dates_down" ? grid.length : Math.max(...grid.map(r => r.length));
   for (let k = res.header + 1; k < span; k++) {

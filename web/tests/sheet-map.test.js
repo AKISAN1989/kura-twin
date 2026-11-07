@@ -45,6 +45,10 @@ test("覚えた書式：見出しがすべて覚えた中にあれば、その�
   const format = { id: "f1", labels: [{ norm: "日付", field: "date" }, { norm: "温度", field: "temp" }, { norm: "bmd", field: "baume" }] };
   const hit = matchFormat([{ text: "日付" }, { text: "ＢＭＤ" }, { text: "温度" }], [format]);
   assert.deepEqual(hit.fields, ["date", "baume", "temp"]);
-  assert.equal(matchFormat([{ text: "日付" }, { text: "室温" }], [format]), null);
+  assert.equal(hit.all, true);
+  // 多くが同じなら、その書式とみなし、新しい見出しだけ分からないままにする
+  const near = matchFormat([{ text: "日付" }, { text: "温度" }, { text: "BMD" }, { text: "室温" }], [format]);
+  assert.deepEqual([near.fields, near.all], [["date", "temp", "baume", null], false]);
+  assert.equal(matchFormat([{ text: "日付" }, { text: "室温" }, { text: "湿度" }], [format]), null);
   assert.equal(signature([{ text: "温度" }, { text: "日付" }]), signature([{ text: "日付" }, { text: "温度" }]));
 });

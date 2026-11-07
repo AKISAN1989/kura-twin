@@ -36,18 +36,22 @@ export function signature(labels) {
 }
 
 /**
- * 覚えた書式と照らす：新しい表の見出しが、覚えた書式の見出しにすべて含まれていれば、その書式とみなす。
- * 見つかれば { format, fields: [label ごとの項目] } を返す
+ * 覚えた書式と照らす。見出しの多く（6割以上）が覚えた書式にあれば、その書式とみなす。
+ * 見つかれば { format, fields: [label ごと：覚えた項目、覚えていない見出しは null], all: すべて覚えていたか } を返す
  */
 export function matchFormat(labels, formats) {
   const norms = labels.map(l => normalizeLabel(l.text));
+  let best = null;
   for (const f of formats ?? []) {
     const known = new Map(f.labels.map(l => [l.norm, l.field]));
-    if (norms.length && norms.every(n => !n || known.has(n))) {
-      return { format: f, fields: norms.map(n => (n ? known.get(n) : "ignore")) };
+    const hits = norms.filter(n => n && known.has(n)).length;
+    const cover = hits / Math.max(1, norms.filter(Boolean).length);
+    if (cover >= 0.6 && (!best || cover > best.cover)) {
+      best = { format: f, cover, fields: norms.map(n => (!n ? "ignore" : known.has(n) ? known.get(n) : null)) };
     }
   }
-  return null;
+  if (!best) return null;
+  return { format: best.format, fields: best.fields, all: best.fields.every(x => x != null) };
 }
 
 // 数字：全角・漢数字の記号・マイナスの書き方（−、ー、▲、△）をそろえる

@@ -15,9 +15,6 @@ const SOURCE = { photo: "写真", excel: "Excel", pdf: "PDF" };
 // 確認の画面で選ぶ項目（よく使う順）
 const CHOICES = ["temp", "baume", "nihonshudo", "alcohol", "acidity", "joubou", "moromi_day", "date", "time", "operation", "note", "tank", "ignore"];
 
-// 初めての書式を確認して覚える仕組み（次の段階で有効にする）
-const LEARN = false;
-
 let current = null; // { file, table, fields, asks: [label番号], step, format, groups }
 
 // ---------- 読む ----------
@@ -37,14 +34,16 @@ async function read(file) {
     return;
   }
   // 覚えた書式なら、その対応で読む（聞かない）。初めてなら Claude の推定を使い、自信のない列だけ聞く
-  const match = LEARN ? matchFormat(table.labels, store.formats) : null;
-  if (match) {
+  const match = matchFormat(table.labels, store.formats);
+  if (match?.all) {
     current = { file, table, fields: match.fields, asks: [], step: 0, format: match.format, known: true };
     store.saveFormat({ ...match.format, used: (match.format.used ?? 0) + 1 });
     return finish();
   }
-  const asks = LEARN ? table.labels.map((l, i) => (l.confidence === "low" ? i : -1)).filter(i => i >= 0) : [];
-  current = { file, table, fields: table.labels.map(l => l.field), asks, step: 0, format: null, known: false };
+  // 覚えた書式に近ければ、覚えている見出しはその対応で、新しい見出しだけ Claude の推定を使う
+  const fields = table.labels.map((l, i) => match?.fields[i] ?? l.field);
+  const asks = table.labels.map((l, i) => (match?.fields[i] == null && l.confidence === "low" ? i : -1)).filter(i => i >= 0);
+  current = { file, table, fields, asks, step: 0, format: match?.format ?? null, known: false };
   if (asks.length) renderAsk(); else finish();
 }
 
@@ -92,6 +91,15 @@ function next() {
 // この蔵の書式として覚える（初めての書式を読み終えたとき）
 function remember() {
   const labels = current.table.labels.map((l, i) => ({ norm: normalizeLabel(l.text), text: l.text, field: current.fields[i] }));
+  if (current.format) {
+    // 覚えた書式に近い表：新しい見出しを、その書式に足して覚える
+    const have = new Set(current.format.labels.map(l => l.norm));
+    const format = { ...current.format, labels: [...current.format.labels, ...labels.filter(l => l.norm && !have.has(l.norm))], used: (current.format.used ?? 0) + 1 };
+    store.saveFormat(format);
+    current.format = format;
+    current.extended = true;
+    return;
+  }
   const n = store.formats.length + 1;
   const format = {
     id: `fmt-${Date.now().toString(36)}`,
@@ -104,7 +112,7 @@ function remember() {
 
 // ---------- 確認・修正の表 ----------
 function finish() {
-  if (LEARN && !current.known) remember();
+  if (!current.known) remember();
   const year = Number(store.currentSeason);
   current.groups = buildGroups(current.table, current.fields, year).map(g => {
     // 日順が書かれていない書式は、蔵の記録の同じ日の日順を使う
@@ -131,13 +139,15 @@ function renderTable() {
   const statusText = table.source === "excel"
     ? `Excel から ${groups.reduce((s, g) => s + g.records.length, 0)}日分／要確認 ${check}`
     : `読み取った欄 ${st.cells}／自信が低かった欄 ${st.low}／読み直しで確定 ${st.fixed}／要確認 ${check}`;
-  const formatNote = !LEARN ? "" : current.known
+  const formatNote = current.known
     ? `<p class="format-note">覚えた書式「${esc(current.format.name)}」で読みました。</p>`
-    : `<p class="format-note">この書式を「${esc(current.format.name)}」として覚えました。次からは聞かずに読みます。</p>`;
+    : current.extended
+      ? `<p class="format-note">覚えた書式「${esc(current.format.name)}」に、新しい見出しを足して覚えました。</p>`
+      : `<p class="format-note">この書式を「${esc(current.format.name)}」として覚えました。次からは聞かずに読みます。</p>`;
   out.innerHTML = `
     ${table.blurry ? `<div class="error">写真がぼやけていて、読めない欄があります。読めた欄だけ表示しています。撮り直してください。</div>` : ""}
     ${formatNote}
-    <p class="small">${esc(SOURCE[table.source])}・${esc(statusText)}</p>
+    <p class="small">${table.source === "excel" ? "" : `${esc(SOURCE[table.source])}・`}${esc(statusText)}</p>
     <span class="legend-inline"><span class="cell-fixed">読み直しで確定</span> <span class="cell-check">要確認</span></span>
     ${groups.map((g, gi) => `
       <div class="row"><label>タンク <select data-tank="${gi}">
