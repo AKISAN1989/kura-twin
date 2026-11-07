@@ -93,8 +93,20 @@ export async function readCanvas(canvas, { year, page = 1, pages = 1, onStep = (
     }
   });
   for (const e of entries) for (const st of e.status) { if (st === "fixed") stats.fixed++; if (st === "check") stats.check++; }
+  // 用紙全体のタンク番号：自信がなければ拡大して読み直す。それでも決まらなければ「要確認」
+  let tank = res.tank, tankStatus = "ok";
+  if (res.tank_confidence === "low" || (res.tank && !/^\d+$/.test(res.tank))) {
+    tankStatus = "check";
+    if (res.tank_region) {
+      try {
+        const rr = await postJson("reread", { image: crop(canvas, res.tank_region), field: "tank", fieldLabel: "タンク番号（数字だけ）", tank: null, date: null, firstRead: res.tank, neighbors: [] });
+        const v = rr.value_number ?? (rr.value_text && Number(String(rr.value_text).replace(/\D/g, "")));
+        if (rr.confident && v) { tank = String(v); tankStatus = "fixed"; }
+      } catch { /* 要確認のまま */ }
+    }
+  }
   return {
-    source: "photo", layout: res.layout, tank: res.tank, blurry: res.image_quality === "blurry",
+    source: "photo", layout: res.layout, tank, tankStatus, blurry: res.image_quality === "blurry",
     labels: res.labels.map(l => ({ text: l.text, field: l.field, confidence: l.confidence, reason: l.reason })),
     entries, stats,
   };
@@ -150,7 +162,7 @@ export function mergeTables(tables) {
     for (const e of t.entries) {
       const values = labels.map(() => null), status = labels.map(() => "ok");
       idx.forEach((to, from) => { values[to] = e.values[from]; status[to] = e.status[from]; });
-      entries.push({ tank: e.tank ?? t.tank, values, status });
+      entries.push({ tank: e.tank ?? t.tank, tankStatus: e.tank ? "ok" : t.tankStatus, values, status });
     }
   }
   for (const e of entries) while (e.values.length < labels.length) { e.values.push(null); e.status.push("ok"); }

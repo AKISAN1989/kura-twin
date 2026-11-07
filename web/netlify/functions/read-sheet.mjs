@@ -7,6 +7,9 @@ import { FIELD_MEANINGS, FieldKey } from "../lib/sheet-fields.mjs";
 
 const Result = z.object({
   tank: z.string().nullable().describe("用紙全体のタンク番号（題や欄外に書かれていれば数字だけ。例 '3'）。表の中にタンクの列・行があれば null でよい"),
+  tank_confidence: z.enum(["high", "low"]).describe("用紙全体のタンク番号の読みに自信があれば high。かすれ・くせ字で迷えば low（タンク番号の読み違いは記録を別のタンクに入れてしまうので、少しでも迷えば low）"),
+  tank_region: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).nullable()
+    .describe("用紙全体のタンク番号が書かれた場所（画像の左上からの割合 0〜1）。無ければ null"),
   layout: z.enum(["dates_across", "dates_down"]).describe("日付が横に並ぶ（見出しが縦に並ぶ）なら dates_across、日付が縦に並ぶ（見出しが横に並ぶ）なら dates_down"),
   image_quality: z.enum(["ok", "blurry"]).describe("ぼやけ・ブレ・暗さで多くの欄が読めなければ blurry"),
   labels: z.array(z.object({
@@ -42,7 +45,9 @@ ${FIELD_MEANINGS}
 - 読めない・かすれている・どちらとも取れる値は、推測で埋めない。null にして low に入れ、low_regions に位置を入れる。
 - 少しでも自信がない欄も low に入れ、low_regions に位置を入れる。
 - 前後の日の流れに合わせて数値を作らない（見えたとおりに書く）。
-- 日本酒度のマイナス記号（−、▲、△ など）は - にする。`;
+- 日本酒度のマイナス記号（−、▲、△ など）は - にする。
+- 備考・操作などの文字の欄は、1字でも読めない・どちらとも取れる字があれば、似た言葉や言いそうな言葉で補わず low にする（「切れ鈍い」と「切れ良い」のように、1字の違いで意味が逆になる）。
+- タンク番号は1字の読み違いで記録が別のタンクに入ってしまう。似た形の数字（3と8、5と6と8、1と7）で少しでも迷えば、低い自信にする。`;
 
 export default handler(async ({ image, mediaType, year, page, pages }) => {
   if (!image) throw new HttpError(400, "経過簿の画像がありません");

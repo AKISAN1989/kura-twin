@@ -119,11 +119,40 @@ export function buildGroups(table, fields, year) {
     // 何も書かれていない列（行）は記録にしない
     if (RECORD_FIELDS.every(k => rec[k] == null)) continue;
     const t = tank ?? entry.tank ?? table.tank ?? null;
-    if (!groups.has(t)) groups.set(t, []);
-    groups.get(t).push(rec);
+    // タンク番号の確かさ：表の中のタンクの列 → その欄の状態、用紙全体の番号 → 読み取りの状態
+    const ti = fields.indexOf("tank");
+    const tst = tank != null ? (entry.status?.[ti] === "low" ? "check" : entry.status?.[ti] ?? "ok")
+      : entry.tank != null ? "ok" : entry.tankStatus ?? table.tankStatus ?? "ok";
+    if (!groups.has(t)) groups.set(t, { records: [], tankStatus: "ok" });
+    const g = groups.get(t);
+    g.records.push(rec);
+    if (tst === "check" || (tst === "fixed" && g.tankStatus === "ok")) g.tankStatus = tst;
   }
-  return [...groups.entries()].map(([tank, records]) => ({
+  return [...groups.entries()].map(([tank, g]) => ({
     tank,
-    records: records.sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? ""))),
+    tankStatus: g.tankStatus,
+    records: g.records.sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? ""))),
   }));
+}
+
+/**
+ * タンク番号の突き合わせ（プログラムの決まった計算。醸造の判断ではない）：
+ * 読んだ日付と日順を、蔵にすでにある記録と比べる。仕込みの始まりがタンクごとにずれているので、
+ * 同じ日付の日順が合うタンクは多くの場合1つに決まる。読んだタンクと合わなければ、合うタンクを返す。
+ * 戻り値：{ ok: true } ／ { ok: false, suggest: "8" | null }（比べられる日が2日未満なら ok）
+ */
+export function checkTankByDays(group, season) {
+  // 日付・日順そのものが「要確認」の日は、突き合わせに使わない
+  const days = group.records.filter(r => r.date && r.moromi_day != null && r._status?.date !== "check" && r._status?.moromi_day !== "check");
+  const fits = tank => {
+    const recs = new Map(tank.records.map(r => [r.date, r.moromi_day]));
+    const both = days.filter(r => recs.has(r.date) && recs.get(r.date) != null);
+    return { n: both.length, hit: both.filter(r => recs.get(r.date) === r.moromi_day).length };
+  };
+  const scored = (season?.tanks ?? []).map(t => ({ id: t.tank, ...fits(t) })).filter(t => t.n >= 2);
+  if (!scored.length) return { ok: true };
+  const good = scored.filter(t => t.hit / t.n >= 0.8);
+  if (good.some(t => t.id === group.tank)) return { ok: true };
+  if (!scored.some(t => t.id === group.tank) && !good.length) return { ok: true }; // 比べられる記録が無い
+  return { ok: false, suggest: good.length === 1 ? good[0].id : null };
 }

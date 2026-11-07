@@ -486,3 +486,6 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
 @media (max-width: 860px) {
   .ask-col-choices { grid-template-columns: repeat(2, 1fr); }
 }
+.tank-warn { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--check); font-size: 15px; line-height: 1.7; }
+.tank-warn button { margin-left: 4px; }
+label.cell-check, label.cell-fixed { padding: 2px 6px; border-radius: 6px; }

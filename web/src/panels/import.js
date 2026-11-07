@@ -7,7 +7,7 @@ import { store } from "../store.js";
 import { esc, errorBox } from "../api.js";
 import { insaneFields } from "../detect.js";
 import { readFile, kindOf } from "../read-pipeline.js";
-import { buildGroups, matchFormat, normalizeLabel, FIELD_LABEL, FIELD_KEYS, RECORD_FIELDS, FIELDS } from "../../shared/sheet-map.mjs";
+import { buildGroups, checkTankByDays, matchFormat, normalizeLabel, FIELD_LABEL, FIELD_KEYS, RECORD_FIELDS, FIELDS } from "../../shared/sheet-map.mjs";
 
 const $ = id => document.getElementById(id);
 const KIND = Object.fromEntries(FIELDS.map(([k, , t]) => [k, t]));
@@ -123,6 +123,9 @@ function finish() {
       }
       for (const k of insaneFields(r, store.rules)) r._status[k] = "check";
     }
+    // タンク番号を、蔵にある記録の日順と突き合わせる（合わなければ要確認にし、合うタンクを示す）
+    const tc = checkTankByDays(g, store.seasons[store.currentSeason]);
+    if (!tc.ok) { g.tankStatus = "check"; g.suggest = tc.suggest; }
     return g;
   });
   renderTable();
@@ -150,7 +153,9 @@ function renderTable() {
     <p class="small">${table.source === "excel" ? "" : `${esc(SOURCE[table.source])}・`}${esc(statusText)}</p>
     <span class="legend-inline"><span class="cell-fixed">読み直しで確定</span> <span class="cell-check">要確認</span></span>
     ${groups.map((g, gi) => `
-      <div class="row"><label>タンク <select data-tank="${gi}">
+      ${g.tankStatus === "check" ? `<div class="tank-warn">タンク番号を確かめてください。${g.suggest && g.suggest !== g.tank
+        ? `日順から見ると <b>${esc(app.tankLabel(g.suggest))}</b> の記録と合います。 <button type="button" class="primary" data-suggest="${gi}">${esc(app.tankLabel(g.suggest))}にする</button>` : "読み取りに自信がありません。"}</div>` : ""}
+      <div class="row"><label class="${cellClass(g.tankStatus)}">タンク <select data-tank="${gi}">
         ${g.tank ? "" : `<option value="">選んでください</option>`}
         ${store.kura.tanks.map(t => `<option value="${t.id}" ${t.id === g.tank ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select></label>
         <span class="muted small">${g.records.length}日分</span></div>
@@ -171,7 +176,12 @@ function renderTable() {
       inp.parentElement.className = cellClass(r._status[k]);
     };
   });
-  out.querySelectorAll("select[data-tank]").forEach(s => { s.onchange = () => { groups[Number(s.dataset.tank)].tank = s.value || null; }; });
+  out.querySelectorAll("select[data-tank]").forEach(s => {
+    s.onchange = () => { const g = groups[Number(s.dataset.tank)]; g.tank = s.value || null; g.tankStatus = "ok"; renderTable(); };
+  });
+  out.querySelectorAll("[data-suggest]").forEach(b => {
+    b.onclick = () => { const g = groups[Number(b.dataset.suggest)]; g.tank = g.suggest; g.tankStatus = "ok"; renderTable(); };
+  });
   $("import-save").onclick = save;
 }
 

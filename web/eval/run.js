@@ -2,13 +2,13 @@
 // 見出しの対応は、Claude の推定をそのまま使う（人の確認なし）。自信のない対応（確認を出す列）は数だけ記録する。
 // 数え方：正解のある欄（空欄でない欄）ごとに「正解／要確認／誤り」。正解が空欄なのに値を読んだ欄は「誤り」に足す。
 import { readFile } from "../src/read-pipeline.js";
-import { buildGroups, FIELD_LABEL } from "../shared/sheet-map.mjs";
+import { buildGroups, checkTankByDays, FIELD_LABEL } from "../shared/sheet-map.mjs";
 
 const params = new URLSearchParams(location.search);
 const only = params.get("only")?.split(",");
 const media = (params.get("media") ?? "photo,excel,pdf").split(",");
-const EXT = { photo: "jpg", excel: "xlsx", pdf: "pdf", hard: "jpg" };
-const FILE = (id, m) => (m === "hard" ? `${id}-hard.jpg` : `${id}.${EXT[m]}`);
+const EXT = { photo: "jpg", excel: "xlsx", pdf: "pdf", hard: "jpg", extreme: "jpg" };
+const FILE = (id, m) => (m === "hard" || m === "extreme" ? `${id}-${m}.jpg` : `${id}.${EXT[m]}`);
 const log = t => { document.getElementById("log").textContent += t + "\n"; };
 
 const same = (key, a, b) => {
@@ -17,9 +17,12 @@ const same = (key, a, b) => {
   return String(a).normalize("NFKC").replace(/\s/g, "") === String(b).normalize("NFKC").replace(/\s/g, "");
 };
 
+let season;
 function score(truth, table) {
   const fields = table.labels.map(l => l.field);
   const groups = buildGroups(table, fields, 2026);
+  // 取り込み画面と同じく、タンク番号を蔵の記録の日順と突き合わせる（合わなければ要確認）
+  for (const g of groups) if (!checkTankByDays(g, season).ok) g.tankStatus = "check";
   const keys = truth.labels.map(([, k]) => k);
   const single = new Set(truth.rows.map(r => r.tank)).size === 1;
   const r = { cells: 0, correct: 0, check: 0, wrong: 0, extra: 0, misses: [] };
@@ -32,7 +35,8 @@ function score(truth, table) {
   if (single) {
     r.cells++;
     const t = truth.rows[0].tank;
-    if (groups.length === 1 && groups[0].tank === t) r.correct++; else { r.wrong++; r.misses.push(`タンク：${groups.map(g => g.tank).join(",")}`); }
+    if (groups.length === 1 && groups[0].tankStatus === "check") { r.check++; r.misses.push(`タンク：要確認（読み ${groups[0].tank}）`); }
+    else if (groups.length === 1 && groups[0].tank === t) r.correct++; else { r.wrong++; r.misses.push(`タンク：${groups.map(g => g.tank).join(",")}`); }
   }
   for (const row of truth.rows) {
     const group = single ? groups[0] : groups.find(g => g.tank === row.tank);
@@ -57,6 +61,7 @@ function score(truth, table) {
 
 async function main() {
   const truth = await fetch("./sheets/truth.json").then(r => r.json());
+  season = await fetch("/data/season-current.json").then(r => r.json());
   const results = [];
   window.evalResults = results;
   for (const [id, t] of Object.entries(truth)) {

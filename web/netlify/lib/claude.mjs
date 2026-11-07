@@ -74,6 +74,11 @@ export function handler(fn) {
       return json(await fn(body));
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.message }, e.status);
+      // 利用額の上限（Claude Console で設定した上限）に達したとき：依頼の形の誤りではないので、分かる言葉で返す
+      if (e instanceof Anthropic.APIError && /usage limits/i.test(e.message ?? "")) {
+        console.error("[claude] 利用額の上限に達しました:", e.message);
+        return json({ error: "いまは Claude を使えません（Claude API の利用額の上限に達しました）。上限が見直されるまで、読み取りと質問はお休みです" }, 503);
+      }
       if (e instanceof Anthropic.RateLimitError) return json({ error: "Claude API が混み合っています。少し待ってから再実行してください" }, 429);
       if (e instanceof Anthropic.AuthenticationError) return json({ error: "APIキーが正しくありません（サーバーの設定を確認してください）" }, 500);
       if (e instanceof Anthropic.BadRequestError) return json({ error: `Claude API への依頼の形が正しくありません：${e.message}` }, 400);

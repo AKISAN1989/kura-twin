@@ -1,7 +1,7 @@
 // 経過簿の表 → 記録（書式の違い・数値の書き方・覚えた書式）
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeLabel, parseCell, toDate, buildGroups, matchFormat, signature } from "../shared/sheet-map.mjs";
+import { normalizeLabel, parseCell, toDate, buildGroups, matchFormat, signature, checkTankByDays } from "../shared/sheet-map.mjs";
 
 test("見出しの比べ方：全角・空白・記号の違いを無視する", () => {
   assert.equal(normalizeLabel("ＢＭＤ"), "bmd");
@@ -51,4 +51,19 @@ test("覚えた書式：見出しがすべて覚えた中にあれば、その�
   assert.deepEqual([near.fields, near.all], [["date", "temp", "baume", null], false]);
   assert.equal(matchFormat([{ text: "日付" }, { text: "室温" }, { text: "湿度" }], [format]), null);
   assert.equal(signature([{ text: "温度" }, { text: "日付" }]), signature([{ text: "日付" }, { text: "温度" }]));
+});
+
+test("タンク番号の突き合わせ：日付と日順が合うタンクを示す", () => {
+  const season = { tanks: [
+    { tank: "5", records: [{ date: "2026-02-01", moromi_day: 13 }, { date: "2026-02-02", moromi_day: 14 }, { date: "2026-02-03", moromi_day: 15 }] },
+    { tank: "8", records: [{ date: "2026-02-01", moromi_day: 4 }, { date: "2026-02-02", moromi_day: 5 }, { date: "2026-02-03", moromi_day: 6 }] },
+  ] };
+  const recs = [{ date: "2026-02-01", moromi_day: 4 }, { date: "2026-02-02", moromi_day: 5 }, { date: "2026-02-03", moromi_day: 6 }];
+  assert.deepEqual(checkTankByDays({ tank: "8", records: recs }, season), { ok: true });
+  assert.deepEqual(checkTankByDays({ tank: "5", records: recs }, season), { ok: false, suggest: "8" });
+  // 日順そのものが要確認の日は使わない（読み違えた日順で、正しいタンク番号を疑わない）
+  const shaky = recs.map((r, i) => ({ ...r, moromi_day: i ? 99 : r.moromi_day, _status: { moromi_day: i ? "check" : "ok" } }));
+  assert.deepEqual(checkTankByDays({ tank: "8", records: shaky }, season), { ok: true });
+  // 比べられる日が無い（新しい日だけ）なら、突き合わせない
+  assert.deepEqual(checkTankByDays({ tank: "5", records: [{ date: "2026-03-01", moromi_day: 30 }] }, season), { ok: true });
 });

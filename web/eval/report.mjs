@@ -2,9 +2,15 @@
 // 使い方：node eval/report.mjs eval/results-round1.json eval/results-round1-hard.json
 import { readFileSync } from "node:fs";
 
-const MEDIA = { photo: "手書き風の写真", pdf: "スキャンした PDF", excel: "Excel", hard: "悪条件の写真" };
-const ORDER = ["photo", "hard", "pdf", "excel"];
-const rows = process.argv.slice(2).flatMap(f => JSON.parse(readFileSync(f, "utf8")));
+const MEDIA = { photo: "手書き風の写真", pdf: "スキャンした PDF", excel: "Excel", hard: "悪条件の写真", extreme: "限界の写真" };
+const ORDER = ["photo", "hard", "extreme", "pdf", "excel"];
+// 後のファイルの結果で上書きする（ただしエラーで測れなかったものは、前の結果を残す）
+const byKey = new Map();
+for (const f of process.argv.slice(2)) for (const r of JSON.parse(readFileSync(f, "utf8"))) {
+  const k = `${r.id}|${r.media}`;
+  if (!r.error || !byKey.has(k)) byKey.set(k, r);
+}
+const rows = [...byKey.values()];
 const ids = [...new Set(rows.map(r => r.id))];
 const media = ORDER.filter(m => rows.some(r => r.media === m));
 const pct = (a, b) => (b ? `${(100 * a / b).toFixed(1)}%` : "-");

@@ -156,6 +156,19 @@ function asHardPhoto(paper) {
   return out;
 }
 
+// 限界の写真：さらにぶれて暗く、画素も少ない（長い辺 1000px）。読めない欄が誤りでなく「要確認」になるかを見る
+function asExtremePhoto(paper) {
+  const c = asHardPhoto(paper);
+  const s = 1000 / Math.max(c.width, c.height);
+  const out = document.createElement("canvas"); out.width = Math.round(c.width * s); out.height = Math.round(c.height * s);
+  const ctx = out.getContext("2d");
+  ctx.filter = "blur(1.4px) brightness(0.85)";
+  ctx.drawImage(c, 0, 0, out.width, out.height);
+  ctx.filter = "none";
+  noise(ctx, out.width, out.height, 20);
+  return out;
+}
+
 // スキャナで取った PDF の見た目：まっすぐ、白く、少しざらつく灰色
 function asScan(paper) {
   const c = document.createElement("canvas"); c.width = paper.width; c.height = paper.height;
@@ -217,6 +230,10 @@ async function main() {
     const hard = asHardPhoto(drawPaper(format, rows, font, "#3a3f55"));
     MESSY = 1;
     await save(`${format.id}-hard.jpg`, hard.toDataURL("image/jpeg", 0.6));
+    MESSY = 3.2; seed = 9000 + i * 13;
+    const extreme = asExtremePhoto(drawPaper(format, rows, font, "#4a4f62"));
+    MESSY = 1;
+    await save(`${format.id}-extreme.jpg`, extreme.toDataURL("image/jpeg", 0.5));
     log(`${format.id}：${rows.length}日分（${format.tanks.join("・")}号）`);
   }
   await save("truth.json", "data:application/json;base64," + btoa(unescape(encodeURIComponent(JSON.stringify(truth, null, 1)))));
