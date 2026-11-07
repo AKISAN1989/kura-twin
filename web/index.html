@@ -147,10 +147,15 @@
 
     <section id="tab-import" class="tab-body import-view" hidden>
       <div class="import-head"><h2 class="sec-head">今日の経過簿を撮る</h2><button id="import-back" type="button" class="link">今日やることに戻る</button></div>
-      <p class="lead">経過簿の写真を選ぶと、Claude が読み取ります。</p>
+      <p class="lead">経過簿の写真・Excel・PDF を選ぶと、Claude が読み取ります。</p>
+      <ul class="kinds" aria-label="読める形式">
+        <li><b>写真</b>手書きの経過簿をスマホで撮る</li>
+        <li><b>Excel</b>パソコンでつけている経過簿</li>
+        <li><b>PDF</b>スキャンした用紙や、書き出した表</li>
+      </ul>
       <label class="dropzone">
-        <input id="import-file" type="file" accept="image/*,.xlsx,.xls">
-        <span class="dz-main">写真か Excel を選ぶ</span>
+        <input id="import-file" type="file" accept="image/*,.xlsx,.xls,.xlsm,.pdf,application/pdf">
+        <span class="dz-main">写真・Excel・PDF を選ぶ</span>
         <span class="dz-sub">読めない欄は推測で埋めず「要確認」にします</span>
       </label>
       <p class="hint"><a href="sheet-template.html" target="_blank" rel="noopener">手書き用の経過簿の用紙</a></p>

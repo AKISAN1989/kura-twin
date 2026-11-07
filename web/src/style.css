@@ -307,6 +307,9 @@ textarea:focus, input:focus, select:focus { outline: 2px solid color-mix(in srgb
 .dropzone input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .dz-main { font-family: var(--gothic); font-size: 18px; font-weight: 600; color: var(--accent); }
 .dz-sub { font-size: 13px; color: var(--muted); }
+.kinds { list-style: none; padding: 0; margin: 0 0 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.kinds li { padding: 8px 8px 7px; border-radius: 10px; background: rgba(255,253,248,.92); border: 1px solid var(--line); font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.kinds b { display: block; font-size: 16px; color: var(--ink); }
 
 /* 杜氏：質問のカード */
 .card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 0; background: rgba(255,253,248,.9); }

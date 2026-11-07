@@ -333,7 +333,7 @@ function renderToday() {
           <label for="import-file" class="link small again" data-open-import>もう1枚撮る</label></div>`
       : `<label for="import-file" class="btn-shoot" data-open-import>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-2.5h6L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
-          <span class="shoot-main">今日の経過簿を撮る</span><span class="shoot-sub">写真か Excel。Claude が読み取ります</span></label>`}
+          <span class="shoot-main">今日の経過簿を撮る</span><span class="shoot-sub">写真・Excel・PDF。Claude が読み取ります</span></label>`}
     ${events.length ? `<div class="today-events"><span class="muted small">今日、変化のあったタンク</span>
       ${events.map(id => `<button type="button" class="chip" data-tank="${esc(id)}"><i class="mk ev"></i>${esc(app.tankLabel(id))}</button>`).join("")}</div>` : ""}
     ${waiting ? `<button type="button" class="today-answers link" data-goto-young>杜氏からの答えを見る（${waiting}件）</button>` : ""}`;
