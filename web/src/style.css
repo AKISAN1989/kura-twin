@@ -121,6 +121,14 @@ body.past { --enamel: #3c5450; --enamel-2: #2d403e; }
     var(--paper); }
 .panel > * { padding-left: 20px; padding-right: 20px; }
 
+/* 起動（読み込みとオープニング）のあいだは、3Dを画面いっぱいに見せ、右の操作画面は出さない。
+   オープニングが終わったら、3Dが静かに縮んで右の画面の場所をあけ、右の画面がゆっくり現れる */
+.app { transition: grid-template-columns .9s cubic-bezier(.4, 0, .2, 1), grid-template-rows .9s cubic-bezier(.4, 0, .2, 1); }
+.panel { transition: background .8s, opacity 1.1s ease .35s; }
+body.intro .app { grid-template-columns: minmax(0, 1fr) 0px; }
+body.intro .panel { opacity: 0; visibility: hidden; max-height: 0; overflow: hidden; border-left-width: 0; transition: none; }
+@media (prefers-reduced-motion: reduce) { .app, .panel { transition-duration: .01s; transition-delay: 0s; } }
+
 .masthead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 16px; padding-bottom: 12px;
   border-bottom: 1px solid var(--sumi); box-shadow: 0 3px 0 -2px var(--sumi-line); }
 .subtitle { margin: 2px 0 0; font-family: var(--mincho); font-size: 12.5px; color: var(--muted); letter-spacing: .12em; }
@@ -438,6 +446,8 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
   .time-badge { top: 52px; font-size: 12px; } /* 狭い画面では、カメラのボタンの下に置く */
   .toji-bubble { font-size: 14px; line-height: 1.75; padding: 14px 15px 10px; max-width: min(16em, calc(100% - 20px)); }
   .app { grid-template-columns: 1fr; grid-template-rows: 55vh auto; height: auto; }
+  body.intro .app { grid-template-columns: 1fr; grid-template-rows: 100vh auto; grid-template-rows: 100svh auto; height: 100vh; height: 100svh; }
+  body.intro { overflow: hidden; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
   .panel > * { padding-left: 14px; padding-right: 14px; }
   .tank-card, .tank-summary { margin-left: 14px; margin-right: 14px; }

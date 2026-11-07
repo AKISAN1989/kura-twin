@@ -387,16 +387,20 @@ const OPENING_MS = 7700;
 let openingDone = false;
 const afterOpening = [];
 function whenOpeningDone(fn) { if (openingDone) fn(); else afterOpening.push(fn); }
+// オープニングが終わったら、右の操作画面を出す（3Dが縮む・画面が現れるのは style.css の動き。役割を選ぶ画面は現れ終わってから）
+const PANEL_REVEAL_MS = 1600;
+function revealPanel() { document.body.classList.remove("intro"); }
 function finishOpening() {
   if (openingDone) return;
   openingDone = true;
+  revealPanel();
   app.emit("opening-done");
   afterOpening.splice(0).forEach(fn => fn());
 }
 function watchOpening() {
   const timer = setTimeout(finishOpening, OPENING_MS);
-  // Unity と同じく、クリック・タップ・スクロール・キーで飛ばす（3Dが蔵全体の視点に戻るのを少し待つ）
-  const skip = () => { clearTimeout(timer); off(); setTimeout(finishOpening, 300); };
+  // Unity と同じく、クリック・タップ・スクロール・キーで飛ばす（3Dが蔵全体の視点に戻るのを少し待つ。右の画面はすぐ出し始める）
+  const skip = () => { clearTimeout(timer); off(); revealPanel(); setTimeout(finishOpening, 300); };
   const canvas = $("unity-canvas");
   const off = () => {
     canvas.removeEventListener("pointerdown", skip); canvas.removeEventListener("wheel", skip); window.removeEventListener("keydown", skip);
@@ -726,11 +730,14 @@ async function main() {
   // 役割：覚えていればそのまま入る。初めて（または ?pick=1）は、オープニングの後に選ぶ画面を出す
   const forcePick = new URLSearchParams(location.search).has("pick");
   setRole(store.role && !forcePick ? store.role : "kurabito", { remember: false });
-  if (!store.role || forcePick) whenOpeningDone(showRolePicker);
+  if (!store.role || forcePick) whenOpeningDone(() => setTimeout(showRolePicker, PANEL_REVEAL_MS));
+  // 3Dの読み込みが止まっても使えるように、60秒たったら右の画面は出す（オープニングを待たない）
+  setTimeout(revealPanel, 60000);
   startUnity();
 }
 
 main().catch(e => {
+  revealPanel();
   if ($("loader-text")) $("loader-text").textContent = e.message;
   console.error(e);
 });
