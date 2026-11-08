@@ -6,7 +6,7 @@
 > 検証の数字は下の「検証」にまとめています。
 
 公開版：https://kura-twin.netlify.app
-デモ動画（3分以内）：（YouTube の URL を公開後に記載します）
+デモ動画（3分以内）：https://youtu.be/if2pZyuJms0
 
 ![蔵ツインの画面](docs/screenshots/after-ui-app.jpg)
 
