@@ -448,6 +448,8 @@ table.sheet { border-collapse: collapse; font-size: 13px; }
   .app { grid-template-columns: 1fr; grid-template-rows: 55vh auto; height: auto; }
   body.intro .app { grid-template-columns: 1fr; grid-template-rows: 100vh auto; grid-template-rows: 100svh auto; height: 100vh; height: 100svh; }
   body.intro { overflow: hidden; }
+  /* スマホ：3Dをゆっくり縮めると、縮むあいだ3Dの描画を何度も作り直してメモリを使うので、一度で縮める（操作画面は静かに現れる） */
+  .app { transition: none; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
   .panel > * { padding-left: 14px; padding-right: 14px; }
   .tank-card, .tank-summary { margin-left: 14px; margin-right: 14px; }

@@ -99,6 +99,9 @@ async function startUnity() {
       codeUrl: `${base}.wasm.unityweb${q}`,
       // ?capture=1 のときだけ、3Dの画面を画像として取り出せるようにする（README・動画の素材用）
       webglContextAttributes: { preserveDrawingBuffer: new URLSearchParams(location.search).has("capture") },
+      // 3Dを描く細かさの上限：スマホ（画面の細かさ3倍の iPhone など）でそのまま描くとメモリを使いすぎ、
+      // Safari がページを止めて再読み込みすることがある。スマホは1.5倍・パソコンは2倍までにする
+      devicePixelRatio: Math.min(window.devicePixelRatio || 1, matchMedia("(max-width: 860px)").matches ? 1.5 : 2),
       companyName: "KuraTwin",
       productName: "KuraTwin",
       productVersion: "0.1",
